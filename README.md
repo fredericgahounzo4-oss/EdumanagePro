@@ -4,7 +4,10 @@ Plateforme de gestion scolaire — backend Django (`backend/`) + frontend React 
 
 Ce dépôt est structuré comme un **monorepo** : les deux projets vivent
 côte à côte, chacun déployé comme un service Render séparé à partir du
-même dépôt GitHub.
+même dépôt GitHub. La base de données Postgres est hébergée sur
+**[Neon](https://neon.tech)** plutôt que sur Render (plan gratuit plus
+généreux, et évite la limite "une seule base Postgres gratuite par compte
+Render").
 
 ## 1. Pousser le code sur GitHub
 
@@ -26,24 +29,37 @@ git branch -M main
 git push -u origin main
 ```
 
-## 2. Déployer sur Render
+## 2. Créer la base de données sur Neon
+
+1. Créez un compte sur [neon.tech](https://neon.tech) (gratuit, pas de carte requise).
+2. **New Project** → donnez-lui un nom (ex. `edumanage`) → choisissez une
+   région proche de vos utilisateurs → créez.
+3. Sur la page du projet, section **Connection string** : choisissez le mode
+   **Pooled connection** (important — Django + gunicorn ouvrent plusieurs
+   connexions simultanées, la version "pooled" passe par PgBouncer et évite
+   d'épuiser la limite de connexions du plan gratuit).
+4. Copiez cette chaîne — elle ressemble à :
+   `postgresql://<user>:<password>@ep-xxxx-pooler.<region>.aws.neon.tech/<db>?sslmode=require`
+   Gardez-la de côté, elle sert de `DATABASE_URL` à l'étape suivante.
+
+## 3. Déployer sur Render
 
 ### Option A — Déploiement en un clic (Blueprint, recommandé)
 
-Ce dépôt contient un fichier `render.yaml` à la racine qui décrit les trois
-briques nécessaires : la base Postgres, le service backend, et le site
-statique frontend.
+Ce dépôt contient un fichier `render.yaml` à la racine qui décrit les deux
+services nécessaires : le backend et le site statique frontend (pas de
+base de données Render — on utilise Neon).
 
 1. Sur [render.com](https://dashboard.render.com), cliquez sur **New +** → **Blueprint**.
 2. Connectez votre dépôt GitHub.
-3. Render détecte `render.yaml` et propose de créer les 3 services d'un coup.
-   Validez.
-4. Le premier déploiement va échouer côté CORS/API (c'est normal — voir
-   l'étape 3 ci-dessous, les deux services ne se connaissent pas encore).
+3. Render détecte `render.yaml` et demande deux valeurs avant de déployer :
+   - `DATABASE_URL` → collez la chaîne de connexion Neon copiée à l'étape 2
+   - `CORS_ALLOWED_ORIGINS` → laissez vide pour l'instant, à corriger à l'étape 4
+     (ou pré-remplissez `https://edumanage-frontend.onrender.com` si ce nom
+     de service n'est pas déjà pris)
+4. **Deploy Blueprint**.
 
 ### Option B — Configuration manuelle (si vous préférez, ou sans Blueprint)
-
-**Base de données** : New + → PostgreSQL → nommez-la `edumanage-db`, plan Free.
 
 **Backend** : New + → Web Service → connectez le dépôt →
 - Root Directory : `backend`
@@ -54,16 +70,16 @@ statique frontend.
   - `DJANGO_SECRET_KEY` → générez une valeur aléatoire longue
   - `DJANGO_DEBUG` → `False`
   - `DJANGO_ALLOWED_HOSTS` → `.onrender.com`
-  - `DATABASE_URL` → copiez la "Internal Connection String" de `edumanage-db`
-  - `CORS_ALLOWED_ORIGINS` → à renseigner à l'étape 3
+  - `DATABASE_URL` → la chaîne de connexion Neon (mode "Pooled connection", étape 2)
+  - `CORS_ALLOWED_ORIGINS` → à renseigner à l'étape 4
 
 **Frontend** : New + → Static Site → connectez le dépôt →
 - Root Directory : `ecole-platform`
 - Build Command : `npm install && npm run build`
 - Publish Directory : `dist`
-- Variable d'environnement `VITE_API_URL` → à renseigner à l'étape 3
+- Variable d'environnement `VITE_API_URL` → à renseigner à l'étape 4
 
-## 3. Relier les deux services (obligatoire, quelle que soit l'option ci-dessus)
+## 4. Relier les deux services (obligatoire, quelle que soit l'option ci-dessus)
 
 Une fois les deux services déployés une première fois, vous avez deux URLs
 du type :
@@ -82,7 +98,7 @@ service modifié. Le frontend doit être **rebuild** après avoir changé
 `VITE_API_URL` (une variable Vite est figée au moment du build, pas lue à
 l'exécution) — c'est automatique via "Save, rebuild and deploy".
 
-## 4. Charger les données de démo
+## 5. Charger les données de démo
 
 Une fois le backend déployé, ouvrez son **Shell** depuis le dashboard Render
 (onglet "Shell" du service backend) et lancez :
@@ -110,7 +126,7 @@ passe (ou supprimez les comptes de démo) avant de partager l'URL
 publiquement — `seed_data` est prévu pour la démonstration, pas pour de
 vraies données d'établissement.
 
-## 5. Vérifier
+## 6. Vérifier
 
 - Backend : `https://edumanage-backend-xxxx.onrender.com/api/auth/login/`
   doit répondre (405 Method Not Allowed sur un GET est normal — c'est un
@@ -118,13 +134,17 @@ vraies données d'établissement.
 - Frontend : ouvrez l'URL du site statique, l'écran de connexion doit
   s'afficher, et la connexion avec un compte de démo doit fonctionner.
 
-## Limites du plan gratuit Render à connaître
+## Limites des plans gratuits à connaître
 
-- Le service backend gratuit s'endort après 15 minutes d'inactivité — le
-  premier chargement après une pause peut prendre 30-60 secondes.
-- La base Postgres gratuite expire après 90 jours (Render vous préviendra
-  par email) — pensez à passer sur un plan payant avant l'échéance pour un
-  usage réel.
+- Le service backend Render gratuit s'endort après 15 minutes d'inactivité —
+  le premier chargement après une pause peut prendre 30-60 secondes.
+- Neon (plan gratuit) met en pause le calcul après ~5 minutes d'inactivité —
+  la première requête après une pause peut être un peu plus lente le temps
+  qu'il se réactive, mais les données ne sont jamais perdues (contrairement
+  à l'expiration à 90 jours du plan Postgres gratuit de Render).
+- Neon gratuit limite le stockage (0.5 Go) et le temps de calcul mensuel —
+  largement suffisant pour une démo ou un petit établissement, à surveiller
+  si l'usage grandit.
 
 ## Structure du dépôt
 

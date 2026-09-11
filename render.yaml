@@ -1,12 +1,8 @@
-databases:
-  - name: edumanage-db
-    databaseName: edumanage
-    user: edumanage
-    plan: free
-
 services:
   # ----------------------------------------------------------------------
-  # Backend Django (API REST)
+  # Backend Django (API REST) — base de données Neon (Postgres externe),
+  # pas de service "databases" Render ici : DATABASE_URL est renseigné
+  # manuellement avec la chaîne de connexion Neon (voir README, section Neon).
   # ----------------------------------------------------------------------
   - type: web
     name: edumanage-backend
@@ -24,10 +20,10 @@ services:
         value: "False"
       - key: DJANGO_ALLOWED_HOSTS
         value: ".onrender.com"
+      # À définir manuellement avec la chaîne de connexion Neon
+      # (Dashboard Neon → Connection string → mode "Pooled connection") :
       - key: DATABASE_URL
-        fromDatabase:
-          name: edumanage-db
-          property: connectionString
+        sync: false
       # À définir manuellement après le premier déploiement, une fois l'URL
       # du frontend connue (voir le README à la racine du dépôt) :
       - key: CORS_ALLOWED_ORIGINS
