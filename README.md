@@ -103,26 +103,33 @@ service modifié. Le frontend doit être **rebuild** après avoir changé
 `VITE_API_URL` (une variable Vite est figée au moment du build, pas lue à
 l'exécution) — c'est automatique via "Save, rebuild and deploy".
 
-## 5. Les données de démo se chargent automatiquement
+## 5. Seul le compte admin est créé automatiquement
 
-Le `build.sh` exécute `python manage.py seed_data` à chaque déploiement du
-backend — c'est fait pour vous dès le premier build, pas besoin du Shell
-Render (indisponible sur le plan gratuit). Le compte admin de démo est
-aussi automatiquement promu superutilisateur Django, utilisable sur `/admin/`.
+Le `build.sh` exécute `python manage.py create_admin` à chaque déploiement
+du backend — **un seul compte est créé, l'admin, promu superutilisateur
+Django** (accès à `/admin/`). Aucune fausse donnée de démo (pas de classes,
+élèves, profs ou paiements fictifs) : c'est un vrai départ propre.
 
-Comptes de démo (mot de passe `password123`) : voir `backend/README.md`.
+**Avant le premier déploiement**, définissez vos propres identifiants admin
+dans les variables d'environnement du service backend sur Render (au lieu
+des valeurs par défaut peu sûres) :
 
-**Important pour un vrai déploiement en production** : une fois prêt à
-accueillir de vraies données d'établissement, retirez la ligne
-`python manage.py seed_data` de `backend/build.sh` (sinon les comptes de
-démo seraient recréés à chaque redéploiement), et changez immédiatement le
-mot de passe du compte admin avant de partager l'URL publiquement.
+| Variable | Valeur |
+|---|---|
+| `DJANGO_ADMIN_EMAIL` | votre vrai email admin |
+| `DJANGO_ADMIN_PASSWORD` | un mot de passe fort de votre choix |
 
-Si vous avez besoin d'exécuter une commande ponctuelle plus tard (via un
-plan payant Render avec Shell activé, par exemple), la syntaxe reste :
-```bash
-python manage.py seed_data --flush   # repart de zéro
-```
+Une fois connecté avec ce compte, c'est à l'admin de créer les comptes
+Professeur et Surveillant depuis la page **"Comptes"** de l'interface, et
+les élèves depuis la page **"Élèves"** (les parents créent eux-mêmes leur
+compte via "Créer un compte" sur l'écran de connexion).
+
+Relancer `create_admin` à un déploiement suivant ne réinitialise jamais un
+mot de passe déjà changé — sans danger.
+
+*Pour tester rapidement avec des données factices (démo/développement
+uniquement), la commande `python manage.py seed_data` existe toujours
+localement — voir `backend/README.md`. Ne l'utilisez pas en production.*
 
 ## 6. Vérifier
 
@@ -130,7 +137,8 @@ python manage.py seed_data --flush   # repart de zéro
   doit répondre (405 Method Not Allowed sur un GET est normal — c'est un
   endpoint POST uniquement, ça prouve juste que le serveur répond).
 - Frontend : ouvrez l'URL du site statique, l'écran de connexion doit
-  s'afficher, et la connexion avec un compte de démo doit fonctionner.
+  s'afficher, et la connexion avec le compte admin (celui défini via
+  `DJANGO_ADMIN_EMAIL`/`DJANGO_ADMIN_PASSWORD`) doit fonctionner.
 
 ## Limites des plans gratuits à connaître
 
