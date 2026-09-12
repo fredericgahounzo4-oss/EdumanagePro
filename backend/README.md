@@ -40,6 +40,17 @@ Comptes de démo (mot de passe unique : **`password123`**) :
 
 Pour repartir de zéro : `python manage.py seed_data --flush`.
 
+**Pour un départ propre sans données factices** (ce qui est utilisé
+automatiquement lors d'un déploiement sur Render, voir `build.sh`) :
+```bash
+python manage.py create_admin
+```
+Ne crée qu'un seul compte admin (superutilisateur), lu depuis les variables
+d'environnement `DJANGO_ADMIN_EMAIL`/`DJANGO_ADMIN_PASSWORD` (par défaut :
+`admin@ecole.tg` / `changeme123` — à changer). Ensuite, c'est à cet admin de
+créer les comptes Professeur/Surveillant (page "Comptes") et les élèves
+(page "Élèves") depuis l'interface.
+
 ## Connecter le frontend React
 
 **C'est fait** — le frontend (`../ecole-platform`) est déjà branché sur cette
