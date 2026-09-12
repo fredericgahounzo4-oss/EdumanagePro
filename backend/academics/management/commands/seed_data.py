@@ -213,3 +213,13 @@ class Command(BaseCommand):
         self.stdout.write('Mot de passe pour tous les comptes de démo : ' + self.style.WARNING(DEMO_PASSWORD))
         for u in users_data:
             self.stdout.write(f"  {u['role']:<12} {u['email']}")
+
+        # L'admin de démo devient superutilisateur Django (accès à /admin/),
+        # utile notamment quand le Shell n'est pas disponible (plan gratuit
+        # Render) pour créer un compte admin autrement.
+        admin_user = users['u1']
+        if not admin_user.is_superuser or not admin_user.is_staff:
+            admin_user.is_superuser = True
+            admin_user.is_staff = True
+            admin_user.save(update_fields=['is_superuser', 'is_staff'])
+        self.stdout.write(self.style.SUCCESS(f'{admin_user.email} promu superutilisateur Django (/admin/).'))
