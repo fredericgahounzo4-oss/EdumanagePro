@@ -103,33 +103,26 @@ service modifié. Le frontend doit être **rebuild** après avoir changé
 `VITE_API_URL` (une variable Vite est figée au moment du build, pas lue à
 l'exécution) — c'est automatique via "Save, rebuild and deploy".
 
-## 5. Charger les données de démo
+## 5. Les données de démo se chargent automatiquement
 
-Une fois le backend déployé, ouvrez son **Shell** depuis le dashboard Render
-(onglet "Shell" du service backend) et lancez :
-
-```bash
-python manage.py seed_data
-```
-
-Puis, pour pouvoir utiliser `/admin/` avec le compte admin de démo :
-
-```bash
-python manage.py shell -c "
-from accounts.models import User
-u = User.objects.get(email='admin@ecole.tg')
-u.is_superuser = True
-u.is_staff = True
-u.save()
-"
-```
+Le `build.sh` exécute `python manage.py seed_data` à chaque déploiement du
+backend — c'est fait pour vous dès le premier build, pas besoin du Shell
+Render (indisponible sur le plan gratuit). Le compte admin de démo est
+aussi automatiquement promu superutilisateur Django, utilisable sur `/admin/`.
 
 Comptes de démo (mot de passe `password123`) : voir `backend/README.md`.
 
-**Important pour un vrai déploiement en production** : changez ce mot de
-passe (ou supprimez les comptes de démo) avant de partager l'URL
-publiquement — `seed_data` est prévu pour la démonstration, pas pour de
-vraies données d'établissement.
+**Important pour un vrai déploiement en production** : une fois prêt à
+accueillir de vraies données d'établissement, retirez la ligne
+`python manage.py seed_data` de `backend/build.sh` (sinon les comptes de
+démo seraient recréés à chaque redéploiement), et changez immédiatement le
+mot de passe du compte admin avant de partager l'URL publiquement.
+
+Si vous avez besoin d'exécuter une commande ponctuelle plus tard (via un
+plan payant Render avec Shell activé, par exemple), la syntaxe reste :
+```bash
+python manage.py seed_data --flush   # repart de zéro
+```
 
 ## 6. Vérifier
 
