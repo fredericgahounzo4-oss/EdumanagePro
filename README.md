@@ -32,8 +32,13 @@ git push -u origin main
 ## 2. Créer la base de données sur Neon
 
 1. Créez un compte sur [neon.tech](https://neon.tech) (gratuit, pas de carte requise).
-2. **New Project** → donnez-lui un nom (ex. `edumanage`) → choisissez une
-   région proche de vos utilisateurs → créez.
+2. **New Project** → donnez-lui un nom (ex. `edumanage`) → pour la région,
+   choisissez **AWS Europe centrale 1 (Francfort)** (pas de région Afrique
+   chez Neon — Francfort est le point le plus proche et le mieux connecté
+   au Togo/Afrique de l'Ouest parmi les options). Le `render.yaml` de ce
+   dépôt place déjà le backend Render dans la même région (`frankfurt`) —
+   important pour que Django et la base ne fassent pas d'aller-retour
+   intercontinental à chaque requête.
 3. Sur la page du projet, section **Connection string** : choisissez le mode
    **Pooled connection** (important — Django + gunicorn ouvrent plusieurs
    connexions simultanées, la version "pooled" passe par PgBouncer et évite
