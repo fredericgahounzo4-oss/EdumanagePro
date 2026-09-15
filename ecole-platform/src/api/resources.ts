@@ -1,8 +1,9 @@
 import { http } from './client';
 import {
   mapUser, mapClasse, mapMatiere, mapEleve, mapNote, mapPaiement, mapCreneau, mapPresence, mapNotification,
+  mapConversation, mapMessage,
 } from './mappers';
-import { User, Eleve, Classe, Matiere, Note, Paiement, CreneauEDT, Presence, Notification } from '../types';
+import { User, Eleve, Classe, Matiere, Note, Paiement, CreneauEDT, Presence, Notification, Conversation, Message } from '../types';
 
 // -------------------------------------------------------------- Auth
 export async function apiLogin(email: string, password: string): Promise<{ access: string; refresh: string; user: User }> {
@@ -122,3 +123,23 @@ export const setUserActive = async (id: string, isActive: boolean): Promise<User
 
 export const resetUserPassword = async (id: string, password?: string): Promise<string> =>
   (await http.post<{ password: string }>(`/auth/users/${id}/reset_password/`, password ? { password } : {})).password;
+
+// ---------------------------------------------------------- Messagerie
+export const fetchConversations = async (): Promise<Conversation[]> =>
+  (await http.getAll<any>('/conversations/')).map(mapConversation);
+
+export const createConversationForEleve = async (eleveId: string, contenu: string): Promise<Conversation> =>
+  mapConversation(await http.post<any>('/conversations/', { eleve: Number(eleveId), contenu }));
+
+export const createConversationForClasse = async (classeId: string, contenu: string): Promise<{ created: number }> =>
+  http.post<{ created: number }>('/conversations/', { classe: Number(classeId), contenu });
+
+export const fetchMessages = async (conversationId: string): Promise<Message[]> =>
+  (await http.get<any[]>(`/conversations/${conversationId}/messages/`)).map(mapMessage);
+
+export const sendReply = async (conversationId: string, contenu: string): Promise<Message> =>
+  mapMessage(await http.post<any>(`/conversations/${conversationId}/messages/`, { contenu }));
+
+export const marquerConversationLue = async (conversationId: string): Promise<void> => {
+  await http.post(`/conversations/${conversationId}/marquer_lu/`, {});
+};

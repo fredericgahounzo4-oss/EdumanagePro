@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Classe, Matiere, Eleve, Note, Paiement, CreneauEDT, Presence, Notification
+from .models import Classe, Matiere, Eleve, Note, Paiement, CreneauEDT, Presence, Notification, Conversation, Message
 
 
 @admin.register(Classe)
@@ -54,3 +54,18 @@ class PresenceAdmin(admin.ModelAdmin):
 class NotificationAdmin(admin.ModelAdmin):
     list_display = ('titre', 'destinataire', 'type', 'date', 'lu')
     list_filter = ('type', 'lu')
+
+
+class MessageInline(admin.TabularInline):
+    model = Message
+    extra = 0
+    readonly_fields = ('auteur', 'contenu', 'date', 'lu')
+    can_delete = False
+
+
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    list_display = ('parent', 'staff', 'eleve', 'created_at')
+    list_filter = ('staff',)
+    search_fields = ('parent__nom', 'parent__prenom', 'staff__nom', 'staff__prenom')
+    inlines = [MessageInline]
