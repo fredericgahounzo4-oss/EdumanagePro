@@ -5,7 +5,7 @@ import { Role } from '../types';
 import {
   LayoutDashboard, Users, BookOpen, CreditCard, Calendar,
   BarChart3, Bell, Settings, LogOut, GraduationCap,
-  FileText, UserCheck, BookMarked, X, ShieldCheck
+  FileText, UserCheck, BookMarked, X, ShieldCheck, MessageCircle
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -34,6 +34,7 @@ const menuByRole: Record<Role, { sectionKey: string; items: { id: string; labelK
     ]},
     { sectionKey: 'section.systeme', items: [
       { id: 'utilisateurs', labelKey: 'nav.utilisateurs', icon: <ShieldCheck size={16} /> },
+      { id: 'messages', labelKey: 'nav.messages', icon: <MessageCircle size={16} /> },
       { id: 'notifications', labelKey: 'nav.notifications', icon: <Bell size={16} /> },
       { id: 'settings', labelKey: 'nav.settings', icon: <Settings size={16} /> },
     ]},
@@ -47,6 +48,7 @@ const menuByRole: Record<Role, { sectionKey: string; items: { id: string; labelK
     ]},
     { sectionKey: 'section.outils', items: [
       { id: 'titulaire', labelKey: 'nav.titulaire', icon: <FileText size={16} /> },
+      { id: 'messages', labelKey: 'nav.messages', icon: <MessageCircle size={16} /> },
       { id: 'notifications', labelKey: 'nav.notifications', icon: <Bell size={16} /> },
     ]},
   ],
@@ -61,6 +63,7 @@ const menuByRole: Record<Role, { sectionKey: string; items: { id: string; labelK
       { id: 'paiements', labelKey: 'nav.paiements', icon: <CreditCard size={16} /> },
     ]},
     { sectionKey: 'section.communication', items: [
+      { id: 'messages', labelKey: 'nav.messages', icon: <MessageCircle size={16} /> },
       { id: 'notifications', labelKey: 'nav.notifications', icon: <Bell size={16} /> },
     ]},
   ],

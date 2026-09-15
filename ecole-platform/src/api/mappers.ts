@@ -4,7 +4,7 @@
  * Ainsi, toutes les pages déjà écrites contre src/types/index.ts continuent
  * de fonctionner sans modification de leur logique d'affichage.
  */
-import { User, Eleve, Classe, Matiere, Note, Paiement, CreneauEDT, Presence, Notification } from '../types';
+import { User, Eleve, Classe, Matiere, Note, Paiement, CreneauEDT, Presence, Notification, Conversation, Message } from '../types';
 
 const s = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
 
@@ -63,4 +63,21 @@ export function mapPresence(p: any): Presence {
 
 export function mapNotification(n: any): Notification {
   return { id: s(n.id), titre: n.titre, message: n.message, type: n.type, date: n.date, lu: n.lu, destinataireId: s(n.destinataire) };
+}
+
+export function mapMessage(m: any): Message {
+  return {
+    id: s(m.id), conversationId: s(m.conversation), auteurId: m.auteur ? s(m.auteur) : undefined,
+    auteurNom: m.auteur_nom, contenu: m.contenu, date: m.date, lu: m.lu,
+  };
+}
+
+export function mapConversation(c: any): Conversation {
+  return {
+    id: s(c.id), parentId: s(c.parent), parentNom: c.parent_nom,
+    staffId: s(c.staff), staffNom: c.staff_nom,
+    eleveId: c.eleve ? s(c.eleve) : undefined, eleveNom: c.eleve_nom || undefined,
+    createdAt: c.created_at, dernierMessage: c.dernier_message ? mapMessage(c.dernier_message) : undefined,
+    nonLus: c.non_lus,
+  };
 }

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from accounts.serializers import UserSerializer
-from .models import Classe, Matiere, Eleve, Note, Paiement, CreneauEDT, Presence, Notification
+from .models import Classe, Matiere, Eleve, Note, Paiement, CreneauEDT, Presence, Notification, Conversation, Message
 from .permissions import is_titulaire_de_classe
 
 
@@ -105,3 +105,44 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ['id', 'titre', 'message', 'type', 'date', 'lu', 'destinataire']
         read_only_fields = ['destinataire']
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    auteur_nom = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Message
+        fields = ['id', 'conversation', 'auteur', 'auteur_nom', 'contenu', 'date', 'lu']
+        read_only_fields = ['auteur', 'date', 'lu']
+
+    def get_auteur_nom(self, obj):
+        return f'{obj.auteur.prenom} {obj.auteur.nom}' if obj.auteur else 'Utilisateur supprimé'
+
+
+class ConversationSerializer(serializers.ModelSerializer):
+    parent_nom = serializers.SerializerMethodField()
+    staff_nom = serializers.SerializerMethodField()
+    eleve_nom = serializers.SerializerMethodField()
+    dernier_message = serializers.SerializerMethodField()
+    non_lus = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Conversation
+        fields = ['id', 'parent', 'parent_nom', 'staff', 'staff_nom', 'eleve', 'eleve_nom', 'created_at', 'dernier_message', 'non_lus']
+
+    def get_parent_nom(self, obj):
+        return f'{obj.parent.prenom} {obj.parent.nom}'
+
+    def get_staff_nom(self, obj):
+        return f'{obj.staff.prenom} {obj.staff.nom}'
+
+    def get_eleve_nom(self, obj):
+        return f'{obj.eleve.prenom} {obj.eleve.nom}' if obj.eleve else None
+
+    def get_dernier_message(self, obj):
+        last = obj.messages.order_by('-date').first()
+        return MessageSerializer(last).data if last else None
+
+    def get_non_lus(self, obj):
+        user = self.context['request'].user
+        return obj.messages.exclude(auteur=user).filter(lu=False).count()

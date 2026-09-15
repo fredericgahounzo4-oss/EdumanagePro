@@ -12,6 +12,7 @@ import UtilisateursPage from './pages/UtilisateursPage';
 import NotesPage from './pages/NotesPage';
 import PaiementsPage from './pages/PaiementsPage';
 import EmploiDuTempsPage from './pages/EmploiDuTempsPage';
+import MessagesPage from './pages/MessagesPage';
 import {
   PresencesPage, ClassesPage, NotificationsPage,
   StatistiquesPage, BulletinsPage, SettingsPage, TitulairePage
@@ -30,6 +31,7 @@ const PAGE_TITLE_KEYS: Record<string, string> = {
   bulletins: 'nav.bulletins',
   titulaire: 'nav.titulaire',
   notifications: 'nav.notifications',
+  messages: 'nav.messages',
   settings: 'nav.settings',
 };
 
@@ -83,6 +85,7 @@ const AppContent: React.FC = () => {
       case 'bulletins': return <BulletinsPage />;
       case 'titulaire': return <TitulairePage />;
       case 'notifications': return <NotificationsPage />;
+      case 'messages': return <MessagesPage />;
       case 'settings': return <SettingsPage />;
       default: return <Dashboard onNavigate={handleNavigate} />;
     }

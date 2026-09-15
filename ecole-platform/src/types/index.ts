@@ -91,3 +91,26 @@ export interface Notification {
   lu: boolean;
   destinataireId: string;
 }
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  auteurId?: string;
+  auteurNom: string;
+  contenu: string;
+  date: string;
+  lu: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  parentId: string;
+  parentNom: string;
+  staffId: string;
+  staffNom: string;
+  eleveId?: string;
+  eleveNom?: string;
+  createdAt: string;
+  dernierMessage?: Message;
+  nonLus: number;
+}

@@ -30,6 +30,7 @@ export const translations: Record<Langue, Record<string, string>> = {
     'nav.bulletins': 'Bulletins',
     'nav.titulaire': 'Classe titulaire',
     'nav.notifications': 'Notifications',
+    'nav.messages': 'Messages',
     'nav.settings': 'Paramètres',
     'nav.deconnexion': 'Déconnexion',
     // Roles
@@ -94,6 +95,7 @@ export const translations: Record<Langue, Record<string, string>> = {
     'nav.bulletins': 'Report cards',
     'nav.titulaire': 'Homeroom class',
     'nav.notifications': 'Notifications',
+    'nav.messages': 'Messages',
     'nav.settings': 'Settings',
     'nav.deconnexion': 'Log out',
     'role.admin': 'Administrator',

@@ -186,3 +186,46 @@ class Notification(models.Model):
 
     def __str__(self):
         return f'{self.titre} → {self.destinataire}'
+
+
+class Conversation(models.Model):
+    """
+    Fil de discussion entre UN parent et UN membre du personnel (admin ou
+    professeur). Un envoi "à toute une classe" crée une Conversation par
+    parent (fan-out côté vue) — chaque parent ne voit que son propre fil,
+    jamais celui des autres.
+    """
+    parent = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='conversations_parent',
+        limit_choices_to={'role': 'parent'},
+    )
+    staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='conversations_staff',
+        limit_choices_to={'role__in': ['admin', 'professeur']},
+    )
+    eleve = models.ForeignKey(
+        Eleve, on_delete=models.SET_NULL, null=True, blank=True, related_name='conversations',
+        help_text="Élève concerné (contexte informatif, non contraignant).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('parent', 'staff')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.parent} <-> {self.staff}'
+
+
+class Message(models.Model):
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
+    auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='messages_envoyes')
+    contenu = models.TextField()
+    date = models.DateTimeField(auto_now_add=True)
+    lu = models.BooleanField(default=False, help_text="Lu par le destinataire (l'autre partie de la conversation).")
+
+    class Meta:
+        ordering = ['date']
+
+    def __str__(self):
+        return f'{self.auteur} — {self.contenu[:30]}'
