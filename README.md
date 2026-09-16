@@ -140,6 +140,32 @@ localement — voir `backend/README.md`. Ne l'utilisez pas en production.*
   s'afficher, et la connexion avec le compte admin (celui défini via
   `DJANGO_ADMIN_EMAIL`/`DJANGO_ADMIN_PASSWORD`) doit fonctionner.
 
+## 7. Installer l'application (PWA)
+
+Le frontend est une **Progressive Web App** : n'importe qui peut l'installer
+depuis son navigateur, sans passer par un store — une icône apparaît sur
+l'écran d'accueil (mobile) ou dans les applications (ordinateur), et elle
+s'ouvre en plein écran comme une appli native. Rien à faire côté
+configuration, c'est déjà actif une fois le frontend déployé — il suffit
+d'ouvrir son URL et d'installer :
+
+**Android (Chrome)** : ouvrez le site → une icône d'installation apparaît
+dans la barre d'adresse, ou menu ⋮ → **"Installer l'application"**.
+
+**iPhone/iPad (Safari)** : ouvrez le site → bouton **Partager** (le carré
+avec une flèche) → **"Sur l'écran d'accueil"**. *(Safari ne propose pas
+d'installation automatique — c'est la seule façon sur iOS, une limitation
+d'Apple et non de l'application.)*
+
+**Ordinateur (Chrome/Edge)** : une icône d'installation ⊕ apparaît à droite
+de la barre d'adresse → cliquez → **"Installer"**.
+
+**Important à savoir** : l'application a toujours besoin d'une connexion
+internet pour fonctionner (les notes, paiements, messages... viennent du
+serveur en temps réel). Ce que le mode PWA accélère, c'est le chargement de
+l'interface elle-même (elle démarre plus vite, avec une icône et un écran
+de démarrage), pas un accès hors-ligne aux données.
+
 ## Limites des plans gratuits à connaître
 
 - Le service backend Render gratuit s'endort après 15 minutes d'inactivité —
