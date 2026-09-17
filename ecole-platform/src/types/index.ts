@@ -51,6 +51,8 @@ export interface Note {
   date: string;
   commentaire?: string;
   trimestre: 1 | 2 | 3;
+  /** Vrai si saisie hors-ligne, en attente d'envoi au serveur. */
+  pending?: boolean;
 }
 
 export interface Paiement {
@@ -62,6 +64,8 @@ export interface Paiement {
   date: string;
   reference: string;
   mois?: string;
+  /** Vrai si saisi/modifié hors-ligne, en attente d'envoi au serveur. */
+  pending?: boolean;
 }
 
 export interface CreneauEDT {
@@ -80,6 +84,8 @@ export interface Presence {
   date: string;
   statut: 'présent' | 'absent' | 'retard' | 'excusé';
   commentaire?: string;
+  /** Vrai si saisie hors-ligne, en attente d'envoi au serveur. */
+  pending?: boolean;
 }
 
 export interface Notification {

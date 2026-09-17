@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, X, Download, CreditCard, AlertCircle, CheckCircle, ChevronRight } from 'lucide-react';
 import { Paiement, Eleve, Classe } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useConnectivity } from '../context/ConnectivityContext';
 import { fetchPaiements, fetchEleves, fetchClasses, createPaiement, updatePaiementStatus } from '../api/resources';
 import { errorMessage } from '../api/client';
 
@@ -12,7 +13,7 @@ interface PaiementsData {
   classes: Classe[];
   paiements: Paiement[];
   onPaiementCreated: (p: Paiement) => void;
-  onPaiementUpdated: (p: Paiement) => void;
+  onPaiementUpdated: (p: { id: string; status: string; pending?: boolean }) => void;
 }
 
 // ============================================================
@@ -98,7 +99,7 @@ const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements }) => {
                         <td style={{ padding: '8px', fontSize: 12, color: 'var(--text-muted)' }}>{p.mois || new Date(p.date).toLocaleDateString('fr-FR')}</td>
                         <td style={{ padding: '8px', textAlign: 'right' }} className="mono">{p.montant.toLocaleString('fr-FR')}</td>
                         <td style={{ padding: '8px', textAlign: 'center' }}>
-                          <span className={`badge badge-${p.status === 'payé' ? 'success' : p.status === 'impayé' ? 'danger' : 'warning'}`}>{p.status}</span>
+                          <span className={`badge badge-${p.status === 'payé' ? 'success' : p.status === 'impayé' ? 'danger' : 'warning'}`} style={p.pending ? { opacity: 0.6, border: '1px dashed currentColor' } : undefined} title={p.pending ? 'En attente de synchronisation' : undefined}>{p.status}{p.pending ? ' ⏳' : ''}</span>
                         </td>
                       </tr>
                     ))}
@@ -340,7 +341,7 @@ const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, o
                       <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.mois || '—'}</td>
                       <td className="mono" style={{ fontWeight: 700 }}>{p.montant.toLocaleString('fr-FR')}</td>
                       <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(p.date).toLocaleDateString('fr-FR')}</td>
-                      <td><span className={`badge badge-${p.status === 'payé' ? 'success' : p.status === 'impayé' ? 'danger' : 'warning'}`}>{p.status}</span></td>
+                      <td><span className={`badge badge-${p.status === 'payé' ? 'success' : p.status === 'impayé' ? 'danger' : 'warning'}`} style={p.pending ? { opacity: 0.6, border: '1px dashed currentColor' } : undefined} title={p.pending ? 'En attente de synchronisation' : undefined}>{p.status}{p.pending ? ' ⏳' : ''}</span></td>
                       <td style={{ textAlign: 'right' }}>
                         {p.status !== 'payé' && (
                           <button className="btn btn-success btn-sm" onClick={() => markPaid(p.id)}>
@@ -389,7 +390,7 @@ const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, o
                         <td style={{ padding: '8px', fontSize: 12, color: 'var(--text-muted)' }}>{p.mois || new Date(p.date).toLocaleDateString('fr-FR')}</td>
                         <td style={{ padding: '8px', textAlign: 'right' }} className="mono">{p.montant.toLocaleString('fr-FR')}</td>
                         <td style={{ padding: '8px', textAlign: 'center' }}>
-                          <span className={`badge badge-${p.status === 'payé' ? 'success' : p.status === 'impayé' ? 'danger' : 'warning'}`}>{p.status}</span>
+                          <span className={`badge badge-${p.status === 'payé' ? 'success' : p.status === 'impayé' ? 'danger' : 'warning'}`} style={p.pending ? { opacity: 0.6, border: '1px dashed currentColor' } : undefined} title={p.pending ? 'En attente de synchronisation' : undefined}>{p.status}{p.pending ? ' ⏳' : ''}</span>
                         </td>
                         <td style={{ padding: '8px', textAlign: 'right' }}>
                           {p.status !== 'payé' && <button className="btn btn-success btn-sm" onClick={() => markPaid(p.id)}>Marquer payé</button>}
@@ -471,6 +472,7 @@ const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, o
 // ============================================================
 const PaiementsPage: React.FC = () => {
   const { user } = useAuth();
+  const { reconnectedAt } = useConnectivity();
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
   const [paiements, setPaiements] = useState<Paiement[]>([]);
@@ -488,13 +490,20 @@ const PaiementsPage: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
+  // Retour de connexion : remplace silencieusement les paiements "en attente"
+  // par les vraies données synchronisées.
+  useEffect(() => {
+    if (reconnectedAt === 0) return;
+    fetchPaiements().then(setPaiements).catch(() => { /* échec silencieux */ });
+  }, [reconnectedAt]);
+
   if (loading) return <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Chargement...</div>;
   if (error) return <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--danger)' }}>{error}</div>;
 
   const data: PaiementsData = {
     eleves, classes, paiements,
     onPaiementCreated: (p) => setPaiements(prev => [...prev, p]),
-    onPaiementUpdated: (p) => setPaiements(prev => prev.map(x => x.id === p.id ? p : x)),
+    onPaiementUpdated: (p) => setPaiements(prev => prev.map(x => x.id === p.id ? { ...x, status: p.status as Paiement['status'], pending: p.pending } : x)),
   };
 
   if (user?.role === 'parent') return <PaiementsParent {...data} />;

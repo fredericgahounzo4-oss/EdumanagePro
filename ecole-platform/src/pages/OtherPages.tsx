@@ -4,6 +4,7 @@ import { Check, X, Clock, AlertCircle, Bell, BellOff, Download, Users, TrendingU
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
+import { useConnectivity } from '../context/ConnectivityContext';
 import {
   fetchClasses, fetchMatieres, fetchEleves, fetchNotes, fetchPaiements,
   fetchPresences, upsertPresence, fetchNotifications, marquerNotificationLue,
@@ -13,6 +14,7 @@ import { errorMessage } from '../api/client';
 
 // ===== PRESENCES =====
 export const PresencesPage: React.FC = () => {
+  const { reconnectedAt } = useConnectivity();
   const [classes, setClasses] = useState<Classe[]>([]);
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [presences, setPresences] = useState<Presence[]>([]);
@@ -31,6 +33,15 @@ export const PresencesPage: React.FC = () => {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  // Retour de connexion : remplace silencieusement les présences "en attente"
+  // par les vraies données synchronisées.
+  useEffect(() => {
+    if (reconnectedAt === 0) return;
+    Promise.all([fetchEleves(), fetchPresences()])
+      .then(([e, p]) => { setEleves(e); setPresences(p); })
+      .catch(() => { /* échec silencieux */ });
+  }, [reconnectedAt]);
 
   const classeEleves = eleves.filter(e => {
     const cls = classes.find(c => c.id === selectedClasse);
@@ -131,10 +142,11 @@ export const PresencesPage: React.FC = () => {
                       const cfg = statutConfig[s];
                       const active = current === s;
                       return (
-                        <td key={s} style={{ textAlign: 'center' }}>
+                        <td key={s} style={{ textAlign: 'center', position: 'relative' }}>
                           <button
                             onClick={() => setStatut(e.id, s)}
-                            style={{ width: 32, height: 32, borderRadius: '50%', border: active ? `2px solid ${cfg.color}` : '1px solid var(--border)', background: active ? cfg.bg : 'transparent', color: active ? cfg.color : 'var(--text-light)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                            title={active && p?.pending ? 'En attente de synchronisation' : undefined}
+                            style={{ width: 32, height: 32, borderRadius: '50%', border: active ? `2px solid ${cfg.color}` : '1px solid var(--border)', background: active ? cfg.bg : 'transparent', color: active ? cfg.color : 'var(--text-light)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', opacity: active && p?.pending ? 0.6 : 1, outline: active && p?.pending ? '1px dashed var(--text-light)' : 'none', outlineOffset: 2 }}
                           >{cfg.icon}</button>
                         </td>
                       );

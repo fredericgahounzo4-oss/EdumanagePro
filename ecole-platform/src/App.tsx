@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './index.css';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
+import { ConnectivityProvider } from './context/ConnectivityContext';
+import OfflineBanner from './components/OfflineBanner';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Sidebar from './components/Sidebar';
@@ -103,6 +105,7 @@ const AppContent: React.FC = () => {
         onClose={() => setSidebarOpen(false)}
       />
       <div className="main-content">
+        <OfflineBanner />
         <Topbar
           title={t(PAGE_TITLE_KEYS[activePage] || 'nav.dashboard')}
           onNavigate={handleNavigate}
@@ -118,9 +121,11 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => (
   <SettingsProvider>
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ConnectivityProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ConnectivityProvider>
   </SettingsProvider>
 );
 

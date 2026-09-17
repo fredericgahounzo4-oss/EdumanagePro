@@ -37,6 +37,22 @@ export class ApiError extends Error {
   }
 }
 
+/** Levée quand une écriture échoue faute de réseau, sur un endpoint qui n'est
+ * PAS mis en file d'attente par le service worker (voir src/sw.ts) — toute
+ * écriture hors Notes/Présences/Paiements. */
+export class OfflineError extends Error {
+  constructor() {
+    super("Vous êtes hors connexion. Cette action nécessite une connexion internet.");
+  }
+}
+
+/** Vrai si la réponse provient du service worker parce que la requête a été
+ * mise en file d'attente hors-ligne (statut 202, voir src/sw.ts) plutôt que
+ * d'une vraie réponse du serveur Django. */
+export function isQueuedResponse(body: unknown): body is { queued: true } {
+  return !!body && typeof body === 'object' && (body as any).queued === true;
+}
+
 let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -70,7 +86,18 @@ async function request<T>(path: string, options: RequestInit = {}, allowRetry = 
   if (tokens?.access) headers['Authorization'] = `Bearer ${tokens.access}`;
 
   const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
-  const res = await fetch(url, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...options, headers });
+  } catch (networkErr) {
+    // Échec réseau réel (pas intercepté par le service worker — les endpoints
+    // Notes/Présences/Paiements sont eux mis en file, voir src/sw.ts, et ne
+    // passent jamais par ce chemin même hors-ligne).
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      throw new OfflineError();
+    }
+    throw networkErr;
+  }
 
   if (res.status === 401 && allowRetry && tokens?.refresh) {
     const newAccess = await refreshAccessToken();
@@ -118,6 +145,7 @@ export const http = {
 
 /** Extrait un message d'erreur lisible d'une ApiError (ou d'une erreur générique). */
 export function errorMessage(err: unknown): string {
+  if (err instanceof OfflineError) return err.message;
   if (err instanceof ApiError) {
     const b = err.body;
     if (typeof b === 'string') return b;

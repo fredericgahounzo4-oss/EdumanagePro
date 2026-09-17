@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, X, Download, Lock } from 'lucide-react';
 import { Note, Classe, Matiere, Eleve } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useConnectivity } from '../context/ConnectivityContext';
 import { getClasseOfEleve, isTitulaireDeClasse, matieresVisibles, matieresEnseigneesParProf, elevesDuProfesseur, classesDuProfesseur } from '../utils/permissions';
 import { fetchClasses, fetchMatieres, fetchEleves, fetchNotes, createNote } from '../api/resources';
 import { errorMessage } from '../api/client';
@@ -477,8 +478,9 @@ const NotesParEleve: React.FC<NotesData> = ({ classes, matieres, eleves: allElev
                       <td className="col-hide-mobile">
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                           {ns.map(n => (
-                            <span key={n.id} title={n.type} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>
-                              <span className={getColor(n.valeur)}>{n.valeur}</span>
+                            <span key={n.id} title={n.pending ? 'En attente de synchronisation' : n.type}
+                              style={{ background: 'var(--surface2)', border: n.pending ? '1px dashed var(--text-light)' : '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 600, opacity: n.pending ? 0.6 : 1 }}>
+                              <span className={getColor(n.valeur)}>{n.valeur}</span>{n.pending ? ' ⏳' : ''}
                             </span>
                           ))}
                         </div>
@@ -637,7 +639,10 @@ const NoteTypeCell: React.FC<{
       {entries.length > 0 && (
         <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'center' }}>
           {entries.map(n => (
-            <span key={n.id} className={getColor(n.valeur)} style={{ fontSize: 10, fontWeight: 700, background: 'var(--surface2)', borderRadius: 4, padding: '1px 4px' }}>{n.valeur}</span>
+            <span key={n.id} className={getColor(n.valeur)} title={n.pending ? 'En attente de synchronisation' : undefined}
+              style={{ fontSize: 10, fontWeight: 700, background: 'var(--surface2)', borderRadius: 4, padding: '1px 4px', opacity: n.pending ? 0.6 : 1, border: n.pending ? '1px dashed var(--text-light)' : 'none' }}>
+              {n.valeur}{n.pending ? ' ⏳' : ''}
+            </span>
           ))}
         </div>
       )}
@@ -772,6 +777,7 @@ const NotesParClasseProf: React.FC<NotesData> = ({ classes, matieres, eleves: al
 // ============================================================
 const NotesPage: React.FC = () => {
   const { user } = useAuth();
+  const { reconnectedAt } = useConnectivity();
   const [classes, setClasses] = useState<Classe[]>([]);
   const [matieres, setMatieres] = useState<Matiere[]>([]);
   const [eleves, setEleves] = useState<Eleve[]>([]);
@@ -789,6 +795,15 @@ const NotesPage: React.FC = () => {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  // Retour de connexion : rafraîchit silencieusement (sans écran de chargement)
+  // pour remplacer les notes "en attente" par les vraies notes synchronisées.
+  useEffect(() => {
+    if (reconnectedAt === 0) return;
+    Promise.all([fetchClasses(), fetchMatieres(), fetchEleves(), fetchNotes()])
+      .then(([c, m, e, n]) => { setClasses(c); setMatieres(m); setEleves(e); setNotes(n); })
+      .catch(() => { /* échec silencieux, on garde l'affichage actuel */ });
+  }, [reconnectedAt]);
 
   if (loading) return <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Chargement...</div>;
   if (error) return <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--danger)' }}>{error}</div>;

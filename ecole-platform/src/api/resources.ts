@@ -1,9 +1,12 @@
-import { http } from './client';
+import { http, isQueuedResponse } from './client';
 import {
   mapUser, mapClasse, mapMatiere, mapEleve, mapNote, mapPaiement, mapCreneau, mapPresence, mapNotification,
   mapConversation, mapMessage,
 } from './mappers';
 import { User, Eleve, Classe, Matiere, Note, Paiement, CreneauEDT, Presence, Notification, Conversation, Message } from '../types';
+
+/** Identifiant temporaire pour un enregistrement créé hors-ligne, en attente de synchronisation. */
+const tempId = () => 'pending-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 
 // -------------------------------------------------------------- Auth
 export async function apiLogin(email: string, password: string): Promise<{ access: string; refresh: string; user: User }> {
@@ -60,24 +63,49 @@ export const deleteEleve = async (id: string): Promise<void> => http.delete(`/el
 export const fetchNotes = async (): Promise<Note[]> => (await http.getAll<any>('/notes/')).map(mapNote);
 export const createNote = async (payload: {
   eleveId: string; matiereId: string; valeur: number; type: string; date: string; trimestre: number; commentaire?: string;
-}): Promise<Note> =>
-  mapNote(await http.post<any>('/notes/', {
+}): Promise<Note> => {
+  const raw = await http.post<any>('/notes/', {
     eleve: Number(payload.eleveId), matiere: Number(payload.matiereId), valeur: payload.valeur,
     type: payload.type, date: payload.date, trimestre: payload.trimestre, commentaire: payload.commentaire || '',
-  }));
+  });
+  if (isQueuedResponse(raw)) {
+    // Hors-ligne : la requête a été mise en file par le service worker et
+    // sera envoyée automatiquement à la reconnexion. On affiche la note
+    // localement en attendant, marquée "pending".
+    return {
+      id: tempId(), eleveId: payload.eleveId, matiereId: payload.matiereId, valeur: payload.valeur,
+      type: payload.type as Note['type'], date: payload.date, trimestre: payload.trimestre as Note['trimestre'],
+      commentaire: payload.commentaire, pending: true,
+    };
+  }
+  return mapNote(raw);
+};
 export const deleteNote = async (id: string): Promise<void> => http.delete(`/notes/${id}/`);
 
 // ---------------------------------------------------------- Paiements
 export const fetchPaiements = async (): Promise<Paiement[]> => (await http.getAll<any>('/paiements/')).map(mapPaiement);
 export const createPaiement = async (payload: {
   eleveId: string; montant: number; type: string; status: string; date: string; reference: string; mois?: string;
-}): Promise<Paiement> =>
-  mapPaiement(await http.post<any>('/paiements/', {
+}): Promise<Paiement> => {
+  const raw = await http.post<any>('/paiements/', {
     eleve: Number(payload.eleveId), montant: payload.montant, type: payload.type,
     status: payload.status, date: payload.date, reference: payload.reference, mois: payload.mois || '',
-  }));
-export const updatePaiementStatus = async (id: string, status: string): Promise<Paiement> =>
-  mapPaiement(await http.patch<any>(`/paiements/${id}/`, { status }));
+  });
+  if (isQueuedResponse(raw)) {
+    return {
+      id: tempId(), eleveId: payload.eleveId, montant: payload.montant, type: payload.type as Paiement['type'],
+      status: payload.status as Paiement['status'], date: payload.date, reference: payload.reference,
+      mois: payload.mois, pending: true,
+    };
+  }
+  return mapPaiement(raw);
+};
+export const updatePaiementStatus = async (id: string, status: string): Promise<{ id: string; status: string; pending?: boolean }> => {
+  const raw = await http.patch<any>(`/paiements/${id}/`, { status });
+  if (isQueuedResponse(raw)) return { id, status, pending: true };
+  const mapped = mapPaiement(raw);
+  return { id: mapped.id, status: mapped.status };
+};
 
 // ------------------------------------------------------ Emploi du temps
 export const fetchEmploiDuTemps = async (): Promise<CreneauEDT[]> => (await http.getAll<any>('/emploi-du-temps/')).map(mapCreneau);
@@ -96,7 +124,14 @@ export const deleteCreneau = async (id: string): Promise<void> => http.delete(`/
 export const fetchPresences = async (): Promise<Presence[]> => (await http.getAll<any>('/presences/')).map(mapPresence);
 export const upsertPresence = async (payload: { id?: string; eleveId: string; date: string; statut: string; commentaire?: string }): Promise<Presence> => {
   const body = { eleve: Number(payload.eleveId), date: payload.date, statut: payload.statut, commentaire: payload.commentaire || '' };
-  return mapPresence(payload.id ? await http.patch<any>(`/presences/${payload.id}/`, body) : await http.post<any>('/presences/', body));
+  const raw = payload.id ? await http.patch<any>(`/presences/${payload.id}/`, body) : await http.post<any>('/presences/', body);
+  if (isQueuedResponse(raw)) {
+    return {
+      id: payload.id || tempId(), eleveId: payload.eleveId, date: payload.date,
+      statut: payload.statut as Presence['statut'], commentaire: payload.commentaire, pending: true,
+    };
+  }
+  return mapPresence(raw);
 };
 
 // ------------------------------------------------------- Notifications
