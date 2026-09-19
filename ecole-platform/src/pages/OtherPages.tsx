@@ -932,48 +932,43 @@ const MOTIF_LABELS: Record<Paiement['type'], string> = {
 };
 
 export const ReceiptPreview: React.FC<{ paiement: Paiement; eleve?: Eleve; payeurNom?: string }> = ({ paiement, eleve, payeurNom }) => {
-  const { settings } = useSettings();
   const motif = MOTIF_LABELS[paiement.type] + (paiement.type === 'mensualite' && paiement.mois ? ` — ${paiement.mois}` : '');
+  const nomPayeur = payeurNom || (eleve ? `Parent / tuteur de ${eleve.prenom} ${eleve.nom}` : '');
 
   return (
-    <div className="card receipt-print" style={{ padding: 28, maxWidth: 480, margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', borderBottom: '2px solid var(--primary)', paddingBottom: 12, marginBottom: 16 }}>
-        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)' }}>{settings.nomEcole}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{settings.ville}, {settings.pays}</div>
+    <div className="card receipt-print" style={{ padding: 32, maxWidth: 420, margin: '0 auto', border: '1px solid var(--text)', borderRadius: 4 }}>
+      <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: 1, marginBottom: 22 }}>
+        BPF <span style={{ borderBottom: '1px solid var(--text)', paddingBottom: 2, marginLeft: 6 }}>{paiement.montant.toLocaleString('fr-FR')}</span>
       </div>
 
-      <div style={{ border: '2px solid var(--border)', borderRadius: 8, padding: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: 1 }}>REÇU</div>
-          <div style={{ fontSize: 12, fontWeight: 700 }}>N° {paiement.reference}</div>
-        </div>
-        <div style={{ textAlign: 'right', fontWeight: 700, marginBottom: 14, fontSize: 13 }}>
-          {settings.devise} {paiement.montant.toLocaleString('fr-FR')}
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+        <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 1 }}>REÇU</div>
+        <div style={{ fontSize: 12 }}>N° <b>{paiement.reference}</b></div>
+      </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
-          <div>
-            <span style={{ color: 'var(--text-muted)' }}>Reçu de M./Mme&nbsp;</span>
-            <span style={{ fontWeight: 700, borderBottom: '1px dotted var(--border)' }}>
-              {payeurNom || (eleve ? `Parent / tuteur de ${eleve.prenom} ${eleve.nom}` : '—')}
-            </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, fontSize: 13 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+          <span>de M</span>
+          <span style={{ flex: 1, fontWeight: 700, borderBottom: '1px dotted var(--text)', paddingBottom: 2 }}>{nomPayeur}</span>
+        </div>
+        <div>
+          <div style={{ borderBottom: '1px dotted var(--text)', minHeight: 18, fontWeight: 700 }}>{montantEnLettres(paiement.montant, 'BPF')}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>la somme de</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+          <span>pour</span>
+          <span style={{ flex: 1, fontWeight: 700, borderBottom: '1px dotted var(--text)', paddingBottom: 2 }}>
+            {motif}{eleve ? ` — ${eleve.prenom} ${eleve.nom} (${eleve.classe})` : ''}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+            <span>Date</span>
+            <span style={{ fontWeight: 700, borderBottom: '1px dotted var(--text)', paddingBottom: 2 }}>{new Date(paiement.date).toLocaleDateString('fr-FR')}</span>
           </div>
-          <div>
-            <span style={{ color: 'var(--text-muted)' }}>la somme de&nbsp;</span>
-            <span style={{ fontWeight: 700 }}>{montantEnLettres(paiement.montant, settings.devise)}</span>
-          </div>
-          <div>
-            <span style={{ color: 'var(--text-muted)' }}>pour&nbsp;</span>
-            <span style={{ fontWeight: 700 }}>
-              {motif}{eleve ? ` — élève ${eleve.prenom} ${eleve.nom} (${eleve.classe})` : ''}
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
-            <div><span style={{ color: 'var(--text-muted)' }}>Date&nbsp;</span><span style={{ fontWeight: 700 }}>{new Date(paiement.date).toLocaleDateString('fr-FR')}</span></div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ height: 32 }} />
-              <div style={{ borderTop: '1px solid var(--text)', paddingTop: 4, fontSize: 10, color: 'var(--text-muted)' }}>Signature</div>
-            </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ height: 30 }} />
+            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>signature</div>
           </div>
         </div>
       </div>
