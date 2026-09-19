@@ -392,7 +392,7 @@ export const StatistiquesPage: React.FC = () => {
     const elevesDuNiveau = eleves.filter(e => nomsClasses.has(e.classe));
     const idsEleves = new Set(elevesDuNiveau.map(e => e.id));
     const notesDuNiveau = notes.filter(n => idsEleves.has(n.eleveId));
-    const moyenne = notesDuNiveau.length ? notesDuNiveau.reduce((s, n) => s + n.valeur, 0) / notesDuNiveau.length : 0;
+    const moyenne = notesDuNiveau.length ? notesDuNiveau.reduce((s, n) => s + n.valeur, 0) / notesDuNiveau.length : null;
     const paiementsDuNiveau = paiements.filter(p => idsEleves.has(p.eleveId));
     const tauxPaiement = paiementsDuNiveau.length
       ? Math.round((paiementsDuNiveau.filter(p => p.status === 'payé').length / paiementsDuNiveau.length) * 100)
@@ -442,6 +442,15 @@ export const StatistiquesPage: React.FC = () => {
     };
   });
 
+  // ----- Taux de réussite (part des élèves notés dont la moyenne générale est ≥ 10/20) -----
+  const elevesAvecNotes = eleves.filter(e => notes.some(n => n.eleveId === e.id));
+  const tauxReussite = elevesAvecNotes.length
+    ? Math.round((elevesAvecNotes.filter(e => {
+        const ns = notes.filter(n => n.eleveId === e.id);
+        return ns.reduce((s, n) => s + n.valeur, 0) / ns.length >= 10;
+      }).length / elevesAvecNotes.length) * 100)
+    : null;
+
   return (
     <div>
       <div className="page-header">
@@ -451,7 +460,7 @@ export const StatistiquesPage: React.FC = () => {
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
         {[
           { label: 'Élèves total', value: eleves.length, icon: <Users size={20} />, color: '#2563a8', bg: 'var(--primary-pale)' },
-          { label: 'Taux de réussite', value: '72%', icon: <CheckCircle size={20} />, color: '#16a34a', bg: 'var(--success-pale)' },
+          { label: 'Taux de réussite', value: tauxReussite !== null ? `${tauxReussite}%` : '—', icon: <CheckCircle size={20} />, color: '#16a34a', bg: 'var(--success-pale)' },
           { label: 'Moyenne globale', value: notes.length ? (notes.reduce((s, n) => s + n.valeur, 0) / notes.length).toFixed(1) + '/20' : '—', icon: <TrendingUp size={20} />, color: '#0891b2', bg: 'var(--info-pale)' },
           { label: 'Notes saisies', value: notes.length, icon: <BookOpen size={20} />, color: '#d97706', bg: 'var(--warning-pale)' },
         ].map(s => (
@@ -483,9 +492,13 @@ export const StatistiquesPage: React.FC = () => {
                   <td>{n.nbClasses}</td>
                   <td>{n.effectif}</td>
                   <td>
-                    <span className={`badge badge-${n.moyenne >= 14 ? 'success' : n.moyenne >= 10 ? 'warning' : 'danger'}`}>
-                      {n.moyenne.toFixed(1)}/20
-                    </span>
+                    {n.moyenne !== null ? (
+                      <span className={`badge badge-${n.moyenne >= 14 ? 'success' : n.moyenne >= 10 ? 'warning' : 'danger'}`}>
+                        {n.moyenne.toFixed(1)}/20
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-light)' }}>—</span>
+                    )}
                   </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 120 }}>
