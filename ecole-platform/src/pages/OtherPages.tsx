@@ -577,83 +577,250 @@ export const StatistiquesPage: React.FC = () => {
 
 // ===== BULLETINS =====
 
-export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matieres: Matiere[]; notes: Note[]; trimestre: 1 | 2 | 3 }> = ({ eleve, classes, matieres, notes, trimestre }) => {
-  const classeMatieres = matieres.filter(m => m.classeId === classes.find(c => c.nom === eleve.classe)?.id);
-  const eleveNotes = notes.filter(n => n.eleveId === eleve.id && n.trimestre === trimestre);
-  const notesByMatiere = classeMatieres.map(m => {
-    const ns = eleveNotes.filter(n => n.matiereId === m.id);
-    const avg = ns.length ? ns.reduce((s, n) => s + n.valeur, 0) / ns.length : null;
-    return { matiere: m, avg };
+const appreciationFor = (avg: number | null) =>
+  avg === null ? '—' : avg >= 16 ? 'Très bien' : avg >= 14 ? 'Bien' : avg >= 12 ? 'Assez bien' : avg >= 10 ? 'Passable' : 'Insuffisant';
+
+export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matieres: Matiere[]; notes: Note[]; eleves: Eleve[]; professeurs: User[]; trimestre: 1 | 2 | 3 }> = ({ eleve, classes, matieres, notes, eleves, professeurs, trimestre }) => {
+  const { settings } = useSettings();
+  const classeObj = classes.find(c => c.nom === eleve.classe);
+  const classeMatieres = matieres.filter(m => m.classeId === classeObj?.id);
+  const classeEleves = eleves.filter(e => e.classe === eleve.classe);
+
+  const avgForEleve = (eleveId: string, matiereId: string) => {
+    const ns = notes.filter(n => n.eleveId === eleveId && n.matiereId === matiereId && n.trimestre === trimestre);
+    return ns.length ? ns.reduce((s, n) => s + n.valeur, 0) / ns.length : null;
+  };
+
+  const rowsData = classeMatieres.map(m => {
+    const eleveNotes = notes.filter(n => n.eleveId === eleve.id && n.matiereId === m.id && n.trimestre === trimestre);
+    const avgOf = (type: Note['type']) => {
+      const ns = eleveNotes.filter(n => n.type === type);
+      return ns.length ? ns.reduce((s, n) => s + n.valeur, 0) / ns.length : null;
+    };
+    const moyInterro = avgOf('interrogation');
+    const moyDevoir = avgOf('devoir');
+    const moyExamen = avgOf('examen');
+    const avg = avgForEleve(eleve.id, m.id);
+    const classAvgs = classeEleves.map(ce => avgForEleve(ce.id, m.id)).filter((v): v is number => v !== null);
+    const moyClasse = classAvgs.length ? classAvgs.reduce((s, v) => s + v, 0) / classAvgs.length : null;
+    let rang: number | null = null;
+    if (avg !== null) {
+      const ranked = classeEleves
+        .map(ce => ({ id: ce.id, avg: avgForEleve(ce.id, m.id) }))
+        .filter((x): x is { id: string; avg: number } => x.avg !== null)
+        .sort((a, b) => b.avg - a.avg);
+      rang = ranked.findIndex(x => x.id === eleve.id) + 1;
+    }
+    const prof = professeurs.find(p => p.id === m.professeurId);
+    return { matiere: m, moyInterro, moyDevoir, moyExamen, moyClasse, avg, rang, totalClasse: classeEleves.length, prof };
   });
-  const moyenneGenerale = notesByMatiere.filter(x => x.avg !== null).length
-    ? (notesByMatiere.filter(x => x.avg !== null).reduce((s, x) => s + (x.avg! * x.matiere.coefficient), 0) /
-       notesByMatiere.filter(x => x.avg !== null).reduce((s, x) => s + x.matiere.coefficient, 0))
-    : null;
+
+  const totalCoeff = rowsData.filter(r => r.avg !== null).reduce((s, r) => s + r.matiere.coefficient, 0);
+  const totalProduit = rowsData.filter(r => r.avg !== null).reduce((s, r) => s + (r.avg as number) * r.matiere.coefficient, 0);
+  const moyenneGenerale = totalCoeff ? totalProduit / totalCoeff : null;
+
+  const moyenneEleveClasse = (eleveId: string) => {
+    const parties = classeMatieres.map(m => ({ avg: avgForEleve(eleveId, m.id), coeff: m.coefficient })).filter((x): x is { avg: number; coeff: number } => x.avg !== null);
+    if (!parties.length) return null;
+    return parties.reduce((s, x) => s + x.avg * x.coeff, 0) / parties.reduce((s, x) => s + x.coeff, 0);
+  };
+  const classementGeneral = (() => {
+    const ranked = classeEleves.map(ce => ({ id: ce.id, moy: moyenneEleveClasse(ce.id) })).filter((x): x is { id: string; moy: number } => x.moy !== null).sort((a, b) => b.moy - a.moy);
+    const idx = ranked.findIndex(x => x.id === eleve.id);
+    return idx >= 0 ? `${idx + 1}${idx === 0 ? 'er' : 'ème'} / ${ranked.length}` : '—';
+  })();
+
+  const mention = moyenneGenerale === null ? '—' : moyenneGenerale >= 16 ? 'Excellent' : moyenneGenerale >= 14 ? 'Très bien' : moyenneGenerale >= 12 ? 'Bien' : moyenneGenerale >= 10 ? 'Passable' : 'Insuffisant';
 
   return (
-    <div className="card bulletin-print" style={{ padding: 32, maxWidth: 720, margin: '0 auto' }}>
-      <div style={{ textAlign: 'center', borderBottom: '2px solid var(--primary)', paddingBottom: 20, marginBottom: 24 }}>
-        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)', letterSpacing: 1 }}>ÉTABLISSEMENT SCOLAIRE</div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>EduManage Pro — Lomé, Togo</div>
-        <div style={{ marginTop: 12, display: 'inline-block', background: 'var(--primary)', color: 'white', padding: '4px 20px', borderRadius: 4, fontSize: 14, fontWeight: 700 }}>
-          BULLETIN DU TRIMESTRE {trimestre} — 2024-2025
+    <div className="card bulletin-print" style={{ padding: '28px 32px', maxWidth: 860, margin: '0 auto', fontSize: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid var(--primary)', paddingBottom: 14, marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--primary)', letterSpacing: 0.5 }}>{settings.nomEcole}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{settings.ville}, {settings.pays}</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>BULLETIN DE NOTES</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Trimestre {trimestre} — Année scolaire {settings.anneeScolaire}</div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24, background: 'var(--surface2)', padding: 16, borderRadius: 8 }}>
-        {[['Nom et prénoms', `${eleve.nom} ${eleve.prenom}`], ['Classe', eleve.classe], ['Date de naissance', eleve.dateNaissance ? new Date(eleve.dateNaissance).toLocaleDateString('fr-FR') : '—'], ['Année scolaire', '2024-2025']].map(([label, value]) => (
-          <div key={label}><div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 2 }}>{label}</div><div style={{ fontWeight: 700 }}>{value}</div></div>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 16, background: 'var(--surface2)', padding: '12px 16px', borderRadius: 8 }}>
+        <div><div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>NOM ET PRÉNOMS</div><div style={{ fontWeight: 700 }}>{eleve.nom} {eleve.prenom}</div></div>
+        <div><div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>CLASSE</div><div style={{ fontWeight: 700 }}>{eleve.classe}</div></div>
+        <div><div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>EFFECTIF</div><div style={{ fontWeight: 700 }}>{classeObj?.effectif ?? classeEleves.length}</div></div>
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
-        <thead>
-          <tr style={{ background: 'var(--primary)', color: 'white' }}>
-            <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12 }}>Matière</th>
-            <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 12 }}>Coeff.</th>
-            <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 12 }}>Moyenne</th>
-            <th style={{ padding: '8px 12px', textAlign: 'center', fontSize: 12 }}>Moy. pond.</th>
-            <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12 }}>Appréciation</th>
-          </tr>
-        </thead>
-        <tbody>
-          {notesByMatiere.map(({ matiere, avg }, i) => (
-            <tr key={matiere.id} style={{ background: i % 2 === 0 ? 'white' : 'var(--surface2)' }}>
-              <td style={{ padding: '8px 12px', fontWeight: 600, fontSize: 13, borderBottom: '1px solid var(--border)' }}>{matiere.nom}</td>
-              <td style={{ padding: '8px 12px', textAlign: 'center', fontSize: 13, borderBottom: '1px solid var(--border)' }}>{matiere.coefficient}</td>
-              <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, fontSize: 14, borderBottom: '1px solid var(--border)', color: avg === null ? 'var(--text-light)' : avg >= 14 ? 'var(--success)' : avg >= 10 ? 'var(--warning)' : 'var(--danger)' }}>
-                {avg !== null ? avg.toFixed(2) : '—'}
-              </td>
-              <td style={{ padding: '8px 12px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                {avg !== null ? (avg * matiere.coefficient).toFixed(2) : '—'}
-              </td>
-              <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
-                {avg === null ? '—' : avg >= 16 ? 'Très bien' : avg >= 14 ? 'Bien' : avg >= 12 ? 'Assez bien' : avg >= 10 ? 'Passable' : 'Insuffisant'}
-              </td>
+      <div className="table-wrap">
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
+          <thead>
+            <tr style={{ background: 'var(--primary)', color: 'white' }}>
+              <th style={{ padding: '6px 8px', textAlign: 'left', fontSize: 10 }}>Matières</th>
+              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Interro /20</th>
+              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Devoir /20</th>
+              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Examen /20</th>
+              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Moy. classe</th>
+              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Moyenne /20</th>
+              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Coef</th>
+              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Produit</th>
+              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Rang</th>
+              <th style={{ padding: '6px 8px', textAlign: 'left', fontSize: 10 }}>Professeur</th>
+              <th style={{ padding: '6px 8px', textAlign: 'left', fontSize: 10 }}>Appréciation</th>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr style={{ background: 'var(--primary-pale)' }}>
-            <td colSpan={2} style={{ padding: '10px 12px', fontWeight: 700 }}>Moyenne générale</td>
-            <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 800, fontSize: 18, color: 'var(--primary-light)' }} colSpan={2}>
-              {moyenneGenerale !== null ? moyenneGenerale.toFixed(2) + '/20' : '—'}
-            </td>
-            <td style={{ padding: '10px 12px', fontWeight: 700 }}>
-              {moyenneGenerale !== null ? (moyenneGenerale >= 16 ? 'Excellent' : moyenneGenerale >= 14 ? 'Très bien' : moyenneGenerale >= 12 ? 'Bien' : moyenneGenerale >= 10 ? 'Passable' : 'Insuffisant') : '—'}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+          </thead>
+          <tbody>
+            {rowsData.map((r, i) => (
+              <tr key={r.matiere.id} style={{ background: i % 2 === 0 ? 'white' : 'var(--surface2)' }}>
+                <td style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{r.matiere.nom}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.moyInterro !== null ? r.moyInterro.toFixed(2) : '—'}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.moyDevoir !== null ? r.moyDevoir.toFixed(2) : '—'}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.moyExamen !== null ? r.moyExamen.toFixed(2) : '—'}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'center', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>{r.moyClasse !== null ? r.moyClasse.toFixed(2) : '—'}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700, borderBottom: '1px solid var(--border)', color: r.avg === null ? 'var(--text-light)' : r.avg >= 14 ? 'var(--success)' : r.avg >= 10 ? 'var(--warning)' : 'var(--danger)' }}>
+                  {r.avg !== null ? r.avg.toFixed(2) : '—'}
+                </td>
+                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.matiere.coefficient}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.avg !== null ? (r.avg * r.matiere.coefficient).toFixed(2) : '—'}</td>
+                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.rang !== null ? `${r.rang}/${r.totalClasse}` : '—'}</td>
+                <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border)', fontSize: 11 }}>{r.prof ? `${r.prof.prenom} ${r.prof.nom}` : '—'}</td>
+                <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border)', fontSize: 11 }}>{appreciationFor(r.avg)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: 'var(--primary-pale)' }}>
+              <td colSpan={5} style={{ padding: '8px', fontWeight: 700 }}>Moyenne générale du trimestre</td>
+              <td colSpan={2} style={{ padding: '8px', textAlign: 'center', fontWeight: 800, fontSize: 15, color: 'var(--primary-light)' }}>
+                {moyenneGenerale !== null ? moyenneGenerale.toFixed(2) + '/20' : '—'}
+              </td>
+              <td colSpan={4} style={{ padding: '8px', fontWeight: 700 }}>{mention}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
 
-      <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-end', marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[['Rang de l\u2019élève', classementGeneral], ['Nombre d\u2019élèves', String(classeEleves.length)]].map(([label, val]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--border)', paddingBottom: 4 }}>
+              <span style={{ color: 'var(--text-muted)' }}>{label}</span><span style={{ fontWeight: 700 }}>{val}</span>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>OBSERVATION DU TITULAIRE</div>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 44, padding: 8 }} />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 40 }}>Signature du Directeur</div>
-          <div style={{ borderTop: '1px solid var(--text)', paddingTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>Cachet et signature</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 36 }}>Signature du Directeur</div>
+          <div style={{ borderTop: '1px solid var(--text)', paddingTop: 4, fontSize: 10, color: 'var(--text-muted)' }}>Cachet et signature</div>
         </div>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 40 }}>Signature du Parent</div>
-          <div style={{ borderTop: '1px solid var(--text)', paddingTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>Signature</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 36 }}>Signature du Parent</div>
+          <div style={{ borderTop: '1px solid var(--text)', paddingTop: 4, fontSize: 10, color: 'var(--text-muted)' }}>Signature</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===== REÇUS DE PAIEMENT =====
+
+const UNITES_FR = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+const DIZAINES_FR: Record<number, string> = { 2: 'vingt', 3: 'trente', 4: 'quarante', 5: 'cinquante', 6: 'soixante' };
+
+const deuxChiffresEnLettres = (n: number): string => {
+  if (n < 20) return UNITES_FR[n];
+  const d = Math.floor(n / 10), u = n % 10;
+  if (d === 7 || d === 9) {
+    const base = d === 7 ? 'soixante' : 'quatre-vingt';
+    if (u === 0) return base + '-dix';
+    if (u === 1) return base + (d === 7 ? ' et onze' : '-onze');
+    return base + '-' + UNITES_FR[10 + u];
+  }
+  if (d === 8) return u === 0 ? 'quatre-vingts' : 'quatre-vingt-' + UNITES_FR[u];
+  if (u === 0) return DIZAINES_FR[d];
+  if (u === 1) return DIZAINES_FR[d] + ' et un';
+  return DIZAINES_FR[d] + '-' + UNITES_FR[u];
+};
+
+const nombreEnLettres = (n: number): string => {
+  if (n === 0) return 'zéro';
+  if (n < 100) return deuxChiffresEnLettres(n);
+  if (n < 1000) {
+    const c = Math.floor(n / 100), r = n % 100;
+    const centPart = (c === 1 ? 'cent' : UNITES_FR[c] + ' cent') + (r === 0 && c > 1 ? 's' : '');
+    return r === 0 ? centPart : centPart + ' ' + nombreEnLettres(r);
+  }
+  if (n < 1000000) {
+    const m = Math.floor(n / 1000), r = n % 1000;
+    const millePart = m === 1 ? 'mille' : nombreEnLettres(m) + ' mille';
+    return r === 0 ? millePart : millePart + ' ' + nombreEnLettres(r);
+  }
+  const mi = Math.floor(n / 1000000), r = n % 1000000;
+  const millionPart = mi === 1 ? 'un million' : nombreEnLettres(mi) + ' millions';
+  return r === 0 ? millionPart : millionPart + ' ' + nombreEnLettres(r);
+};
+
+const montantEnLettres = (montant: number, devise: string) => {
+  const mot = nombreEnLettres(Math.round(montant));
+  return mot.charAt(0).toUpperCase() + mot.slice(1) + ' ' + (devise === 'FCFA' ? 'francs CFA' : devise);
+};
+
+const MOTIF_LABELS: Record<Paiement['type'], string> = {
+  inscription: "Frais d'inscription",
+  mensualite: 'Mensualité',
+  transport: 'Frais de transport',
+  cantine: 'Frais de cantine',
+};
+
+export const ReceiptPreview: React.FC<{ paiement: Paiement; eleve?: Eleve; payeurNom?: string }> = ({ paiement, eleve, payeurNom }) => {
+  const { settings } = useSettings();
+  const motif = MOTIF_LABELS[paiement.type] + (paiement.type === 'mensualite' && paiement.mois ? ` — ${paiement.mois}` : '');
+
+  return (
+    <div className="card receipt-print" style={{ padding: 28, maxWidth: 480, margin: '0 auto' }}>
+      <div style={{ textAlign: 'center', borderBottom: '2px solid var(--primary)', paddingBottom: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)' }}>{settings.nomEcole}</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{settings.ville}, {settings.pays}</div>
+      </div>
+
+      <div style={{ border: '2px solid var(--border)', borderRadius: 8, padding: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: 1 }}>REÇU</div>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>N° {paiement.reference}</div>
+        </div>
+        <div style={{ textAlign: 'right', fontWeight: 700, marginBottom: 14, fontSize: 13 }}>
+          {settings.devise} {paiement.montant.toLocaleString('fr-FR')}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
+          <div>
+            <span style={{ color: 'var(--text-muted)' }}>Reçu de M./Mme&nbsp;</span>
+            <span style={{ fontWeight: 700, borderBottom: '1px dotted var(--border)' }}>
+              {payeurNom || (eleve ? `Parent / tuteur de ${eleve.prenom} ${eleve.nom}` : '—')}
+            </span>
+          </div>
+          <div>
+            <span style={{ color: 'var(--text-muted)' }}>la somme de&nbsp;</span>
+            <span style={{ fontWeight: 700 }}>{montantEnLettres(paiement.montant, settings.devise)}</span>
+          </div>
+          <div>
+            <span style={{ color: 'var(--text-muted)' }}>pour&nbsp;</span>
+            <span style={{ fontWeight: 700 }}>
+              {motif}{eleve ? ` — élève ${eleve.prenom} ${eleve.nom} (${eleve.classe})` : ''}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
+            <div><span style={{ color: 'var(--text-muted)' }}>Date&nbsp;</span><span style={{ fontWeight: 700 }}>{new Date(paiement.date).toLocaleDateString('fr-FR')}</span></div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ height: 32 }} />
+              <div style={{ borderTop: '1px solid var(--text)', paddingTop: 4, fontSize: 10, color: 'var(--text-muted)' }}>Signature</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -665,13 +832,14 @@ export const BulletinsPage: React.FC = () => {
   const [matieres, setMatieres] = useState<Matiere[]>([]);
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [professeurs, setProfesseurs] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchClasses(), fetchMatieres(), fetchEleves(), fetchNotes()])
-      .then(([c, m, e, n]) => { if (!cancelled) { setClasses(c); setMatieres(m); setEleves(e); setNotes(n); setSelectedClasse(prev => prev || c[0]?.id || ''); } })
+    Promise.all([fetchClasses(), fetchMatieres(), fetchEleves(), fetchNotes(), fetchUsersByRole('professeur')])
+      .then(([c, m, e, n, p]) => { if (!cancelled) { setClasses(c); setMatieres(m); setEleves(e); setNotes(n); setProfesseurs(p); setSelectedClasse(prev => prev || c[0]?.id || ''); } })
       .catch(err => { if (!cancelled) setError(errorMessage(err)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -792,7 +960,7 @@ export const BulletinsPage: React.FC = () => {
               </div>
             </div>
             <div className="modal-body" style={{ background: 'var(--surface2)' }}>
-              <BulletinPreview eleve={viewEleveObj} classes={classes} matieres={matieres} notes={notes} trimestre={selectedTrimestre} />
+              <BulletinPreview eleve={viewEleveObj} classes={classes} matieres={matieres} notes={notes} eleves={eleves} professeurs={professeurs} trimestre={selectedTrimestre} />
             </div>
           </div>
         </div>
@@ -812,7 +980,7 @@ export const BulletinsPage: React.FC = () => {
             <div className="modal-body" style={{ background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 20 }}>
               {classeEleves.map(e => (
                 <div key={e.id} className="bulletin-page-break">
-                  <BulletinPreview eleve={e} classes={classes} matieres={matieres} notes={notes} trimestre={selectedTrimestre} />
+                  <BulletinPreview eleve={e} classes={classes} matieres={matieres} notes={notes} eleves={eleves} professeurs={professeurs} trimestre={selectedTrimestre} />
                 </div>
               ))}
             </div>
@@ -1005,6 +1173,7 @@ export const TitulairePage: React.FC = () => {
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [paiements, setPaiements] = useState<Paiement[]>([]);
+  const [professeurs, setProfesseurs] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedClasse, setSelectedClasse] = useState('');
@@ -1013,10 +1182,10 @@ export const TitulairePage: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchClasses(), fetchMatieres(), fetchEleves(), fetchNotes(), fetchPaiements()])
-      .then(([c, m, e, n, p]) => {
+    Promise.all([fetchClasses(), fetchMatieres(), fetchEleves(), fetchNotes(), fetchPaiements(), fetchUsersByRole('professeur')])
+      .then(([c, m, e, n, p, prof]) => {
         if (cancelled) return;
-        setClasses(c); setMatieres(m); setEleves(e); setNotes(n); setPaiements(p);
+        setClasses(c); setMatieres(m); setEleves(e); setNotes(n); setPaiements(p); setProfesseurs(prof);
         const mine = c.filter(cl => cl.professeurPrincipalId === user?.id);
         setSelectedClasse(prev => prev || mine[0]?.id || '');
       })
@@ -1170,7 +1339,7 @@ export const TitulairePage: React.FC = () => {
               </div>
             </div>
             <div className="modal-body" style={{ background: 'var(--surface2)' }}>
-              <BulletinPreview eleve={viewEleveObj} classes={classes} matieres={matieres} notes={notes} trimestre={selectedTrimestre} />
+              <BulletinPreview eleve={viewEleveObj} classes={classes} matieres={matieres} notes={notes} eleves={eleves} professeurs={professeurs} trimestre={selectedTrimestre} />
             </div>
           </div>
         </div>

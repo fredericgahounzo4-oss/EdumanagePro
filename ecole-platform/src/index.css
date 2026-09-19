@@ -522,11 +522,11 @@ tbody tr:last-child td { border-bottom: none; }
   table { min-width: 360px; }
 }
 
-/* Impression du bulletin (bouton "Télécharger PDF" -> window.print()) */
+/* Impression du bulletin et du reçu (bouton "Télécharger PDF" -> window.print()) */
 @media print {
   body * { visibility: hidden; }
-  .bulletin-print, .bulletin-print * { visibility: visible; }
-  .bulletin-print {
+  .bulletin-print, .bulletin-print *, .receipt-print, .receipt-print * { visibility: visible; }
+  .bulletin-print, .receipt-print {
     position: absolute;
     top: 0;
     left: 0;

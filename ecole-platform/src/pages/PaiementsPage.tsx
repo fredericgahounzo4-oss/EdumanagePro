@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Download, CreditCard, AlertCircle, CheckCircle, ChevronRight } from 'lucide-react';
-import { Paiement, Eleve, Classe } from '../types';
+import { Paiement, Eleve, Classe, User } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useConnectivity } from '../context/ConnectivityContext';
-import { fetchPaiements, fetchEleves, fetchClasses, createPaiement, updatePaiementStatus } from '../api/resources';
+import { fetchPaiements, fetchEleves, fetchClasses, createPaiement, updatePaiementStatus, fetchUsersByRole } from '../api/resources';
 import { errorMessage } from '../api/client';
+import { ReceiptPreview } from './OtherPages';
 
 const ALL = '__all__';
 
@@ -12,16 +13,24 @@ interface PaiementsData {
   eleves: Eleve[];
   classes: Classe[];
   paiements: Paiement[];
+  parents: User[];
   onPaiementCreated: (p: Paiement) => void;
   onPaiementUpdated: (p: { id: string; status: string; pending?: boolean }) => void;
 }
 
+const payeurNomFor = (eleve: Eleve | undefined, parents: User[]) => {
+  const parent = eleve ? parents.find(p => p.id === eleve.parentId) : undefined;
+  return parent ? `${parent.prenom} ${parent.nom}` : undefined;
+};
+
 // ============================================================
 // VUE PARENT — uniquement son/ses enfant(s)
 // ============================================================
-const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements }) => {
+const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements, parents }) => {
   const { user } = useAuth();
   const [detailEleve, setDetailEleve] = useState<string | null>(null);
+  const [receiptPaiement, setReceiptPaiement] = useState<string | null>(null);
+  const handlePrintReceipt = () => window.print();
 
   const mesEnfants = eleves.filter(e => e.parentId === user?.id);
 
@@ -90,6 +99,7 @@ const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements }) => {
                       <th style={{ textAlign: 'left', padding: '6px 8px', fontSize: 12, color: 'var(--text-muted)' }}>Période</th>
                       <th style={{ textAlign: 'right', padding: '6px 8px', fontSize: 12, color: 'var(--text-muted)' }}>Montant</th>
                       <th style={{ textAlign: 'center', padding: '6px 8px', fontSize: 12, color: 'var(--text-muted)' }}>Statut</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', fontSize: 12, color: 'var(--text-muted)' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -100,6 +110,9 @@ const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements }) => {
                         <td style={{ padding: '8px', textAlign: 'right' }} className="mono">{p.montant.toLocaleString('fr-FR')}</td>
                         <td style={{ padding: '8px', textAlign: 'center' }}>
                           <span className={`badge badge-${p.status === 'payé' ? 'success' : p.status === 'impayé' ? 'danger' : 'warning'}`} style={p.pending ? { opacity: 0.6, border: '1px dashed currentColor' } : undefined} title={p.pending ? 'En attente de synchronisation' : undefined}>{p.status}{p.pending ? ' ⏳' : ''}</span>
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                          {p.status === 'payé' && <button className="btn btn-ghost btn-sm" onClick={() => setReceiptPaiement(p.id)}><Download size={12} /> Reçu</button>}
                         </td>
                       </tr>
                     ))}
@@ -113,6 +126,28 @@ const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements }) => {
           </div>
         </div>
       )}
+
+      {receiptPaiement && (() => {
+        const p = paiements.find(x => x.id === receiptPaiement);
+        if (!p) return null;
+        const e = eleves.find(x => x.id === p.eleveId);
+        return (
+          <div className="modal-overlay bulletin-modal-overlay" onClick={() => setReceiptPaiement(null)}>
+            <div className="modal bulletin-modal" onClick={ev => ev.stopPropagation()} style={{ maxWidth: 560 }}>
+              <div className="modal-header no-print">
+                <div className="modal-title">Reçu de paiement</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-accent btn-sm" onClick={handlePrintReceipt}><Download size={13} /> Télécharger PDF</button>
+                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setReceiptPaiement(null)}><X size={16} /></button>
+                </div>
+              </div>
+              <div className="modal-body" style={{ background: 'var(--surface2)' }}>
+                <ReceiptPreview paiement={p} eleve={e} payeurNom={payeurNomFor(e, parents)} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -120,12 +155,14 @@ const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements }) => {
 // ============================================================
 // VUE ADMIN — toutes les classes
 // ============================================================
-const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, onPaiementCreated, onPaiementUpdated }) => {
+const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, parents, onPaiementCreated, onPaiementUpdated }) => {
   const [selectedClasse, setSelectedClasse] = useState(ALL);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [detailEleve, setDetailEleve] = useState<string | null>(null);
+  const [receiptPaiement, setReceiptPaiement] = useState<string | null>(null);
+  const handlePrintReceipt = () => window.print();
   const [form, setForm] = useState({ eleveId: eleves[0]?.id || '', montant: '', type: 'mensualite', status: 'impayé', date: new Date().toISOString().split('T')[0], mois: '' });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -349,7 +386,7 @@ const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, o
                           </button>
                         )}
                         {p.status === 'payé' && (
-                          <button className="btn btn-ghost btn-sm"><Download size={12} /> Reçu</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setReceiptPaiement(p.id)}><Download size={12} /> Reçu</button>
                         )}
                       </td>
                     </tr>
@@ -394,6 +431,7 @@ const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, o
                         </td>
                         <td style={{ padding: '8px', textAlign: 'right' }}>
                           {p.status !== 'payé' && <button className="btn btn-success btn-sm" onClick={() => markPaid(p.id)}>Marquer payé</button>}
+                          {p.status === 'payé' && <button className="btn btn-ghost btn-sm" onClick={() => setReceiptPaiement(p.id)}><Download size={12} /> Reçu</button>}
                         </td>
                       </tr>
                     ))}
@@ -408,6 +446,28 @@ const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, o
           </div>
         </div>
       )}
+
+      {receiptPaiement && (() => {
+        const p = paiements.find(x => x.id === receiptPaiement);
+        if (!p) return null;
+        const e = eleves.find(x => x.id === p.eleveId);
+        return (
+          <div className="modal-overlay bulletin-modal-overlay" onClick={() => setReceiptPaiement(null)}>
+            <div className="modal bulletin-modal" onClick={ev => ev.stopPropagation()} style={{ maxWidth: 560 }}>
+              <div className="modal-header no-print">
+                <div className="modal-title">Reçu de paiement</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-accent btn-sm" onClick={handlePrintReceipt}><Download size={13} /> Télécharger PDF</button>
+                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setReceiptPaiement(null)}><X size={16} /></button>
+                </div>
+              </div>
+              <div className="modal-body" style={{ background: 'var(--surface2)' }}>
+                <ReceiptPreview paiement={p} eleve={e} payeurNom={payeurNomFor(e, parents)} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
@@ -476,6 +536,7 @@ const PaiementsPage: React.FC = () => {
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
   const [paiements, setPaiements] = useState<Paiement[]>([]);
+  const [parents, setParents] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -483,8 +544,8 @@ const PaiementsPage: React.FC = () => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([fetchEleves(), fetchClasses(), fetchPaiements()])
-      .then(([e, c, p]) => { if (!cancelled) { setEleves(e); setClasses(c); setPaiements(p); } })
+    Promise.all([fetchEleves(), fetchClasses(), fetchPaiements(), fetchUsersByRole('parent')])
+      .then(([e, c, p, par]) => { if (!cancelled) { setEleves(e); setClasses(c); setPaiements(p); setParents(par); } })
       .catch(err => { if (!cancelled) setError(errorMessage(err)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -501,7 +562,7 @@ const PaiementsPage: React.FC = () => {
   if (error) return <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--danger)' }}>{error}</div>;
 
   const data: PaiementsData = {
-    eleves, classes, paiements,
+    eleves, classes, paiements, parents,
     onPaiementCreated: (p) => setPaiements(prev => [...prev, p]),
     onPaiementUpdated: (p) => setPaiements(prev => prev.map(x => x.id === p.id ? { ...x, status: p.status as Paiement['status'], pending: p.pending } : x)),
   };
