@@ -630,40 +630,37 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
   const facultativeMatieresConfig = allClasseMatieres.filter(m => isFacultative(m.nom));
   const classeEleves = eleves.filter(e => e.classe === eleve.classe);
 
-  const avgForEleveMatiere = (eleveId: string, matiereId: string, tri: 1 | 2 | 3) => {
+  // Moyenne d'une matière pour un élève donné : moyenne du contrôle continu
+  // (devoirs + interros combinés) et de la composition (examen), pondérées
+  // à parts égales — c'est LA formule canonique, utilisée partout ci-dessous
+  // (moyenne de l'élève, moyenne de la classe, rang) pour garantir que les
+  // chiffres restent cohérents entre eux (ex. la moyenne d'une classe à un
+  // seul élève doit toujours être strictement égale à la moyenne de cet élève).
+  const avgOfType = (ns: Note[], type: Note['type']) => {
+    const filtered = ns.filter(n => n.type === type);
+    return filtered.length ? filtered.reduce((s, n) => s + n.valeur, 0) / filtered.length : null;
+  };
+  const moyenneMatiereEleve = (eleveId: string, matiereId: string, tri: 1 | 2 | 3) => {
     const ns = notes.filter(n => n.eleveId === eleveId && n.matiereId === matiereId && n.trimestre === tri);
-    return ns.length ? ns.reduce((s, n) => s + n.valeur, 0) / ns.length : null;
+    const continu = ns.filter(n => n.type === 'devoir' || n.type === 'interrogation');
+    const moyContinu = continu.length ? continu.reduce((s, n) => s + n.valeur, 0) / continu.length : null;
+    const moyCompo = avgOfType(ns, 'examen');
+    const parties = [moyContinu, moyCompo].filter((v): v is number => v !== null);
+    return parties.length ? parties.reduce((s, v) => s + v, 0) / parties.length : null;
   };
 
   const computeRow = (m: Matiere) => {
     const eleveNotes = notes.filter(n => n.eleveId === eleve.id && n.matiereId === m.id && n.trimestre === trimestre);
-    const moyInterro = (() => {
-      const ns = eleveNotes.filter(n => n.type === 'interrogation');
-      return ns.length ? ns.reduce((s, n) => s + n.valeur, 0) / ns.length : null;
-    })();
-    const moyComp = (() => {
-      const ns = eleveNotes.filter(n => n.type === 'examen');
-      return ns.length ? ns.reduce((s, n) => s + n.valeur, 0) / ns.length : null;
-    })();
-    // "Notes de devoir" du bulletin regroupe devoirs et interrogations
-    const devoirEtInterro = eleveNotes.filter(n => n.type === 'devoir' || n.type === 'interrogation');
-    const moyDevoir = devoirEtInterro.length ? devoirEtInterro.reduce((s, n) => s + n.valeur, 0) / devoirEtInterro.length : null;
-    const partiesMoyDes2 = [moyDevoir, moyComp].filter((v): v is number => v !== null);
-    const moyDes2 = partiesMoyDes2.length ? partiesMoyDes2.reduce((s, v) => s + v, 0) / partiesMoyDes2.length : null;
-    const classAvgs = classeEleves.map(ce => avgForEleveMatiere(ce.id, m.id, trimestre)).filter((v): v is number => v !== null);
+    const moyInterro = avgOfType(eleveNotes, 'interrogation');
+    const moyDevoir = avgOfType(eleveNotes, 'devoir');
+    const moyComp = avgOfType(eleveNotes, 'examen');
+    const moyDes2 = moyenneMatiereEleve(eleve.id, m.id, trimestre);
+    const classAvgs = classeEleves.map(ce => moyenneMatiereEleve(ce.id, m.id, trimestre)).filter((v): v is number => v !== null);
     const moyClasse = classAvgs.length ? classAvgs.reduce((s, v) => s + v, 0) / classAvgs.length : null;
     let rang: number | null = null;
     if (moyDes2 !== null) {
       const ranked = classeEleves
-        .map(ce => {
-          const ceNotes = notes.filter(n => n.eleveId === ce.id && n.matiereId === m.id && n.trimestre === trimestre);
-          const ceDevoir = ceNotes.filter(n => n.type === 'devoir' || n.type === 'interrogation');
-          const ceExamen = ceNotes.filter(n => n.type === 'examen');
-          const ceDevoirAvg = ceDevoir.length ? ceDevoir.reduce((s, n) => s + n.valeur, 0) / ceDevoir.length : null;
-          const ceExamenAvg = ceExamen.length ? ceExamen.reduce((s, n) => s + n.valeur, 0) / ceExamen.length : null;
-          const parts = [ceDevoirAvg, ceExamenAvg].filter((v): v is number => v !== null);
-          return { id: ce.id, moy: parts.length ? parts.reduce((s, v) => s + v, 0) / parts.length : null };
-        })
+        .map(ce => ({ id: ce.id, moy: moyenneMatiereEleve(ce.id, m.id, trimestre) }))
         .filter((x): x is { id: string; moy: number } => x.moy !== null)
         .sort((a, b) => b.moy - a.moy);
       rang = ranked.findIndex(x => x.id === eleve.id) + 1;
@@ -684,7 +681,7 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
   });
 
   const moyenneEleveTrimestre = (eleveId: string, tri: 1 | 2 | 3) => {
-    const parties = classeMatieres.map(m => ({ avg: avgForEleveMatiere(eleveId, m.id, tri), coeff: m.coefficient })).filter((x): x is { avg: number; coeff: number } => x.avg !== null);
+    const parties = classeMatieres.map(m => ({ avg: moyenneMatiereEleve(eleveId, m.id, tri), coeff: m.coefficient })).filter((x): x is { avg: number; coeff: number } => x.avg !== null);
     if (!parties.length) return null;
     return parties.reduce((s, x) => s + x.avg * x.coeff, 0) / parties.reduce((s, x) => s + x.coeff, 0);
   };
