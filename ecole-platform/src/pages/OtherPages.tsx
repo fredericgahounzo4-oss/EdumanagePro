@@ -580,140 +580,277 @@ export const StatistiquesPage: React.FC = () => {
 const appreciationFor = (avg: number | null) =>
   avg === null ? '—' : avg >= 16 ? 'Très bien' : avg >= 14 ? 'Bien' : avg >= 12 ? 'Assez bien' : avg >= 10 ? 'Passable' : 'Insuffisant';
 
+const normalizeNom = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+const FACULTATIVE_MATCHERS: { label: string; keywords: string[] }[] = [
+  { label: 'EPS', keywords: ['eps', 'sport', 'education physique'] },
+  { label: 'Dessin', keywords: ['dessin'] },
+  { label: 'Enseign. Ménager', keywords: ['menager', 'menagere'] },
+  { label: 'Langues Nation.', keywords: ['langue national'] },
+  { label: 'Conduite', keywords: ['conduite'] },
+];
+
+const isFacultative = (nomMatiere: string) => {
+  const n = normalizeNom(nomMatiere);
+  return FACULTATIVE_MATCHERS.some(f => f.keywords.some(k => n.includes(k)));
+};
+
 export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matieres: Matiere[]; notes: Note[]; eleves: Eleve[]; professeurs: User[]; trimestre: 1 | 2 | 3 }> = ({ eleve, classes, matieres, notes, eleves, professeurs, trimestre }) => {
   const { settings } = useSettings();
   const classeObj = classes.find(c => c.nom === eleve.classe);
-  const classeMatieres = matieres.filter(m => m.classeId === classeObj?.id);
+  const allClasseMatieres = matieres.filter(m => m.classeId === classeObj?.id);
+  const classeMatieres = allClasseMatieres.filter(m => !isFacultative(m.nom));
+  const facultativeMatieresConfig = allClasseMatieres.filter(m => isFacultative(m.nom));
   const classeEleves = eleves.filter(e => e.classe === eleve.classe);
 
-  const avgForEleve = (eleveId: string, matiereId: string) => {
-    const ns = notes.filter(n => n.eleveId === eleveId && n.matiereId === matiereId && n.trimestre === trimestre);
+  const avgForEleveMatiere = (eleveId: string, matiereId: string, tri: 1 | 2 | 3) => {
+    const ns = notes.filter(n => n.eleveId === eleveId && n.matiereId === matiereId && n.trimestre === tri);
     return ns.length ? ns.reduce((s, n) => s + n.valeur, 0) / ns.length : null;
   };
 
-  const rowsData = classeMatieres.map(m => {
+  const computeRow = (m: Matiere) => {
     const eleveNotes = notes.filter(n => n.eleveId === eleve.id && n.matiereId === m.id && n.trimestre === trimestre);
-    const avgOf = (type: Note['type']) => {
-      const ns = eleveNotes.filter(n => n.type === type);
+    const moyInterro = (() => {
+      const ns = eleveNotes.filter(n => n.type === 'interrogation');
       return ns.length ? ns.reduce((s, n) => s + n.valeur, 0) / ns.length : null;
-    };
-    const moyInterro = avgOf('interrogation');
-    const moyDevoir = avgOf('devoir');
-    const moyExamen = avgOf('examen');
-    const avg = avgForEleve(eleve.id, m.id);
-    const classAvgs = classeEleves.map(ce => avgForEleve(ce.id, m.id)).filter((v): v is number => v !== null);
+    })();
+    const moyComp = (() => {
+      const ns = eleveNotes.filter(n => n.type === 'examen');
+      return ns.length ? ns.reduce((s, n) => s + n.valeur, 0) / ns.length : null;
+    })();
+    // "Notes de devoir" du bulletin regroupe devoirs et interrogations
+    const devoirEtInterro = eleveNotes.filter(n => n.type === 'devoir' || n.type === 'interrogation');
+    const moyDevoir = devoirEtInterro.length ? devoirEtInterro.reduce((s, n) => s + n.valeur, 0) / devoirEtInterro.length : null;
+    const partiesMoyDes2 = [moyDevoir, moyComp].filter((v): v is number => v !== null);
+    const moyDes2 = partiesMoyDes2.length ? partiesMoyDes2.reduce((s, v) => s + v, 0) / partiesMoyDes2.length : null;
+    const classAvgs = classeEleves.map(ce => avgForEleveMatiere(ce.id, m.id, trimestre)).filter((v): v is number => v !== null);
     const moyClasse = classAvgs.length ? classAvgs.reduce((s, v) => s + v, 0) / classAvgs.length : null;
     let rang: number | null = null;
-    if (avg !== null) {
+    if (moyDes2 !== null) {
       const ranked = classeEleves
-        .map(ce => ({ id: ce.id, avg: avgForEleve(ce.id, m.id) }))
-        .filter((x): x is { id: string; avg: number } => x.avg !== null)
-        .sort((a, b) => b.avg - a.avg);
+        .map(ce => {
+          const ceNotes = notes.filter(n => n.eleveId === ce.id && n.matiereId === m.id && n.trimestre === trimestre);
+          const ceDevoir = ceNotes.filter(n => n.type === 'devoir' || n.type === 'interrogation');
+          const ceExamen = ceNotes.filter(n => n.type === 'examen');
+          const ceDevoirAvg = ceDevoir.length ? ceDevoir.reduce((s, n) => s + n.valeur, 0) / ceDevoir.length : null;
+          const ceExamenAvg = ceExamen.length ? ceExamen.reduce((s, n) => s + n.valeur, 0) / ceExamen.length : null;
+          const parts = [ceDevoirAvg, ceExamenAvg].filter((v): v is number => v !== null);
+          return { id: ce.id, moy: parts.length ? parts.reduce((s, v) => s + v, 0) / parts.length : null };
+        })
+        .filter((x): x is { id: string; moy: number } => x.moy !== null)
+        .sort((a, b) => b.moy - a.moy);
       rang = ranked.findIndex(x => x.id === eleve.id) + 1;
     }
     const prof = professeurs.find(p => p.id === m.professeurId);
-    return { matiere: m, moyInterro, moyDevoir, moyExamen, moyClasse, avg, rang, totalClasse: classeEleves.length, prof };
-  });
+    return { matiere: m, moyInterro, moyDevoir, moyComp, moyClasse, moyDes2, rang, totalClasse: classeEleves.length, prof };
+  };
 
-  const totalCoeff = rowsData.filter(r => r.avg !== null).reduce((s, r) => s + r.matiere.coefficient, 0);
-  const totalProduit = rowsData.filter(r => r.avg !== null).reduce((s, r) => s + (r.avg as number) * r.matiere.coefficient, 0);
+  const rowsData = classeMatieres.map(computeRow);
+
+  const totalCoeff = rowsData.filter(r => r.moyDes2 !== null).reduce((s, r) => s + r.matiere.coefficient, 0);
+  const totalProduit = rowsData.filter(r => r.moyDes2 !== null).reduce((s, r) => s + (r.moyDes2 as number) * r.matiere.coefficient, 0);
   const moyenneGenerale = totalCoeff ? totalProduit / totalCoeff : null;
 
-  const moyenneEleveClasse = (eleveId: string) => {
-    const parties = classeMatieres.map(m => ({ avg: avgForEleve(eleveId, m.id), coeff: m.coefficient })).filter((x): x is { avg: number; coeff: number } => x.avg !== null);
+  const facultativeRows = FACULTATIVE_MATCHERS.map(f => {
+    const matched = facultativeMatieresConfig.find(m => f.keywords.some(k => normalizeNom(m.nom).includes(k)));
+    return matched ? { label: matched.nom, row: computeRow(matched) } : { label: f.label, row: null };
+  });
+
+  const moyenneEleveTrimestre = (eleveId: string, tri: 1 | 2 | 3) => {
+    const parties = classeMatieres.map(m => ({ avg: avgForEleveMatiere(eleveId, m.id, tri), coeff: m.coefficient })).filter((x): x is { avg: number; coeff: number } => x.avg !== null);
     if (!parties.length) return null;
     return parties.reduce((s, x) => s + x.avg * x.coeff, 0) / parties.reduce((s, x) => s + x.coeff, 0);
   };
+
   const classementGeneral = (() => {
-    const ranked = classeEleves.map(ce => ({ id: ce.id, moy: moyenneEleveClasse(ce.id) })).filter((x): x is { id: string; moy: number } => x.moy !== null).sort((a, b) => b.moy - a.moy);
+    const ranked = classeEleves.map(ce => ({ id: ce.id, moy: moyenneEleveTrimestre(ce.id, trimestre) })).filter((x): x is { id: string; moy: number } => x.moy !== null).sort((a, b) => b.moy - a.moy);
+    const idx = ranked.findIndex(x => x.id === eleve.id);
+    return idx >= 0 ? `${idx + 1}${idx === 0 ? 'er' : 'ème'} / ${ranked.length}` : '—';
+  })();
+
+  const moyAnnuelleFor = (eleveId: string) => {
+    const parTrim = ([1, 2, 3] as const).map(t => moyenneEleveTrimestre(eleveId, t)).filter((v): v is number => v !== null);
+    return parTrim.length ? parTrim.reduce((s, v) => s + v, 0) / parTrim.length : null;
+  };
+  const moyenneAnnuelle = moyAnnuelleFor(eleve.id);
+
+  const classementAnnuel = (() => {
+    const ranked = classeEleves.map(ce => ({ id: ce.id, moy: moyAnnuelleFor(ce.id) })).filter((x): x is { id: string; moy: number } => x.moy !== null).sort((a, b) => b.moy - a.moy);
     const idx = ranked.findIndex(x => x.id === eleve.id);
     return idx >= 0 ? `${idx + 1}${idx === 0 ? 'er' : 'ème'} / ${ranked.length}` : '—';
   })();
 
   const mention = moyenneGenerale === null ? '—' : moyenneGenerale >= 16 ? 'Excellent' : moyenneGenerale >= 14 ? 'Très bien' : moyenneGenerale >= 12 ? 'Bien' : moyenneGenerale >= 10 ? 'Passable' : 'Insuffisant';
 
+  const renderRow = (label: string, r: ReturnType<typeof computeRow> | null, key: string) => (
+    <tr key={key} style={{ background: 'white' }}>
+      <td style={{ padding: '5px 7px', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{label}</td>
+      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyInterro !== null && r?.moyInterro !== undefined ? r.moyInterro.toFixed(2) : '—'}</td>
+      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyDevoir !== null && r?.moyDevoir !== undefined ? r.moyDevoir.toFixed(2) : '—'}</td>
+      <td style={{ padding: '5px 7px', textAlign: 'center', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>{r?.moyClasse !== null && r?.moyClasse !== undefined ? r.moyClasse.toFixed(2) : '—'}</td>
+      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyComp !== null && r?.moyComp !== undefined ? r.moyComp.toFixed(2) : '—'}</td>
+      <td style={{ padding: '5px 7px', textAlign: 'center', fontWeight: 700, borderBottom: '1px solid var(--border)', color: !r || r.moyDes2 === null ? 'var(--text-light)' : r.moyDes2 >= 14 ? 'var(--success)' : r.moyDes2 >= 10 ? 'var(--warning)' : 'var(--danger)' }}>
+        {r?.moyDes2 !== null && r?.moyDes2 !== undefined ? r.moyDes2.toFixed(2) : '—'}
+      </td>
+      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r ? r.matiere.coefficient : '—'}</td>
+      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyDes2 !== null && r?.moyDes2 !== undefined ? (r.moyDes2 * r.matiere.coefficient).toFixed(2) : '—'}</td>
+      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.rang ? `${r.rang}/${r.totalClasse}` : '—'}</td>
+      <td style={{ padding: '5px 7px', borderBottom: '1px solid var(--border)', fontSize: 10 }}>{r?.prof ? `${r.prof.prenom} ${r.prof.nom}` : '—'}</td>
+      <td style={{ padding: '5px 7px', borderBottom: '1px solid var(--border)', fontSize: 10 }}>{r ? appreciationFor(r.moyDes2) : '—'}</td>
+      <td style={{ padding: '5px 7px', borderBottom: '1px solid var(--border)' }} />
+    </tr>
+  );
+
   return (
-    <div className="card bulletin-print" style={{ padding: '28px 32px', maxWidth: 860, margin: '0 auto', fontSize: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid var(--primary)', paddingBottom: 14, marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--primary)', letterSpacing: 0.5 }}>{settings.nomEcole}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{settings.ville}, {settings.pays}</div>
+    <div className="card bulletin-print" style={{ padding: '24px 28px', maxWidth: 920, margin: '0 auto', fontSize: 11 }}>
+      {/* En-tête officiel */}
+      <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr 220px', gap: 10, alignItems: 'center', borderBottom: '2px solid var(--text)', paddingBottom: 10, marginBottom: 10 }}>
+        <div style={{ width: 74, height: 74, borderRadius: '50%', border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 8, fontWeight: 800, color: 'var(--primary)', lineHeight: 1.1, padding: 4 }}>
+          {settings.nomEcole.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 6).toUpperCase()}
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>BULLETIN DE NOTES</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Trimestre {trimestre} — Année scolaire {settings.anneeScolaire}</div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>{settings.ministere}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)', marginTop: 2 }}>{settings.nomEcole}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+            B.P: {settings.bp} {settings.ville}-{settings.pays} — Tél : {settings.telephone1}{settings.telephone2 ? ` / ${settings.telephone2}` : ''}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', fontSize: 10, fontWeight: 700 }}>
+          <div>{settings.republique.toUpperCase()}</div>
+          <div style={{ fontWeight: 400, fontSize: 9, marginTop: 2 }}>{settings.deviseNationale}</div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 16, background: 'var(--surface2)', padding: '12px 16px', borderRadius: 8 }}>
-        <div><div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>NOM ET PRÉNOMS</div><div style={{ fontWeight: 700 }}>{eleve.nom} {eleve.prenom}</div></div>
-        <div><div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>CLASSE</div><div style={{ fontWeight: 700 }}>{eleve.classe}</div></div>
-        <div><div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>EFFECTIF</div><div style={{ fontWeight: 700 }}>{classeObj?.effectif ?? classeEleves.length}</div></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 800 }}>BULLETIN DE NOTES N°.... DU {trimestre}{trimestre === 1 ? 'er' : 'ème'} TRIMESTRE</div>
+        <div style={{ display: 'flex', gap: 16, fontSize: 10 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 12, border: '1px solid var(--text)', display: 'inline-block' }} /> Doublant</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 12, border: '1px solid var(--text)', display: 'inline-block' }} /> Nouveau</span>
+        </div>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, fontSize: 11, marginBottom: 4 }}>
+        <div>Année scolaire <b>{settings.anneeScolaire}</b></div>
+        <div>Classe <b>{eleve.classe}</b></div>
+        <div>Effectif <b>{classeObj?.effectif ?? classeEleves.length}</b></div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+        <div>Nom et prénoms de l'élève <b>{eleve.nom} {eleve.prenom}</b></div>
+        <div>N° MLE <b>—</b></div>
+      </div>
+
+      {/* Tableau principal */}
       <div className="table-wrap">
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 4 }}>
           <thead>
             <tr style={{ background: 'var(--primary)', color: 'white' }}>
-              <th style={{ padding: '6px 8px', textAlign: 'left', fontSize: 10 }}>Matières</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Interro /20</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Devoir /20</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Examen /20</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Moy. classe</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Moyenne /20</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Coef</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Produit</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center', fontSize: 10 }}>Rang</th>
-              <th style={{ padding: '6px 8px', textAlign: 'left', fontSize: 10 }}>Professeur</th>
-              <th style={{ padding: '6px 8px', textAlign: 'left', fontSize: 10 }}>Appréciation</th>
+              <th style={{ padding: '5px 7px', textAlign: 'left', fontSize: 9 }}>Matières</th>
+              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Notes d'interro /20</th>
+              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Notes de devoir /20</th>
+              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Moy classe /20</th>
+              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Moy de comp /20</th>
+              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Notes moy des 2 /20</th>
+              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Coef</th>
+              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Produit</th>
+              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Rang</th>
+              <th style={{ padding: '5px 7px', textAlign: 'left', fontSize: 9 }}>Nom des Prof</th>
+              <th style={{ padding: '5px 7px', textAlign: 'left', fontSize: 9 }}>Appréciation gén.</th>
+              <th style={{ padding: '5px 7px', textAlign: 'left', fontSize: 9 }}>Signature</th>
             </tr>
           </thead>
           <tbody>
-            {rowsData.map((r, i) => (
-              <tr key={r.matiere.id} style={{ background: i % 2 === 0 ? 'white' : 'var(--surface2)' }}>
-                <td style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{r.matiere.nom}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.moyInterro !== null ? r.moyInterro.toFixed(2) : '—'}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.moyDevoir !== null ? r.moyDevoir.toFixed(2) : '—'}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.moyExamen !== null ? r.moyExamen.toFixed(2) : '—'}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'center', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>{r.moyClasse !== null ? r.moyClasse.toFixed(2) : '—'}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700, borderBottom: '1px solid var(--border)', color: r.avg === null ? 'var(--text-light)' : r.avg >= 14 ? 'var(--success)' : r.avg >= 10 ? 'var(--warning)' : 'var(--danger)' }}>
-                  {r.avg !== null ? r.avg.toFixed(2) : '—'}
-                </td>
-                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.matiere.coefficient}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.avg !== null ? (r.avg * r.matiere.coefficient).toFixed(2) : '—'}</td>
-                <td style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r.rang !== null ? `${r.rang}/${r.totalClasse}` : '—'}</td>
-                <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border)', fontSize: 11 }}>{r.prof ? `${r.prof.prenom} ${r.prof.nom}` : '—'}</td>
-                <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border)', fontSize: 11 }}>{appreciationFor(r.avg)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr style={{ background: 'var(--primary-pale)' }}>
-              <td colSpan={5} style={{ padding: '8px', fontWeight: 700 }}>Moyenne générale du trimestre</td>
-              <td colSpan={2} style={{ padding: '8px', textAlign: 'center', fontWeight: 800, fontSize: 15, color: 'var(--primary-light)' }}>
-                {moyenneGenerale !== null ? moyenneGenerale.toFixed(2) + '/20' : '—'}
-              </td>
-              <td colSpan={4} style={{ padding: '8px', fontWeight: 700 }}>{mention}</td>
+            {rowsData.map(r => renderRow(r.matiere.nom, r, r.matiere.id))}
+            <tr style={{ background: 'var(--primary-pale)', fontWeight: 700 }}>
+              <td style={{ padding: '6px 7px' }}>TOTAL</td>
+              <td colSpan={5} />
+              <td style={{ padding: '6px 7px', textAlign: 'center' }}>{totalCoeff || '—'}</td>
+              <td style={{ padding: '6px 7px', textAlign: 'center' }}>{totalProduit ? totalProduit.toFixed(2) : '—'}</td>
+              <td colSpan={3} />
             </tr>
-          </tfoot>
+          </tbody>
         </table>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[['Rang de l\u2019élève', classementGeneral], ['Nombre d\u2019élèves', String(classeEleves.length)]].map(([label, val]) => (
-            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--border)', paddingBottom: 4 }}>
-              <span style={{ color: 'var(--text-muted)' }}>{label}</span><span style={{ fontWeight: 700 }}>{val}</span>
+      {/* Matières facultatives */}
+      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 11, margin: '10px 0 4px' }}>MATIÈRES FACULTATIVES</div>
+      <div className="table-wrap">
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
+          <tbody>
+            {facultativeRows.map((f, i) => renderRow(f.label, f.row, 'fac-' + i))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Majoration / Observation du titulaire */}
+      <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 12, marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 4 }}>MAJORATION</div>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 32 }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 4 }}>OBSERVATION DU TITULAIRE</div>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 32 }} />
+        </div>
+      </div>
+
+      {/* Total des points */}
+      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 8 }}>TOTAL DES POINTS</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[
+              ['Moyenne du trimestre', moyenneGenerale !== null ? moyenneGenerale.toFixed(2) + '/20 (' + mention + ')' : '—'],
+              ['Classement du trimestre', classementGeneral],
+              ['Moyenne annuelle', moyenneAnnuelle !== null ? moyenneAnnuelle.toFixed(2) + '/20' : '—'],
+              ['Classement annuel', classementAnnuel],
+            ].map(([label, val]) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--border)', paddingBottom: 3, fontSize: 11 }}>
+                <span style={{ color: 'var(--text-muted)' }}>{label}</span><span style={{ fontWeight: 700 }}>{val}</span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Moyenne annuelle en toutes lettres</div>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 24, marginBottom: 8, padding: 6, fontSize: 10 }} />
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Décision et observation du conseil</div>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 24, padding: 6, fontSize: 10 }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Assiduité / Décision */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 14, fontSize: 11 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {['Travail', 'Conduite', "Nbre d'absences"].map(label => (
+            <div key={label} style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 3 }}>
+              <span style={{ color: 'var(--text-muted)' }}>{label}</span>
             </div>
           ))}
         </div>
         <div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>OBSERVATION DU TITULAIRE</div>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 44, padding: 8 }} />
+          <div style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 3, marginBottom: 6 }}><span style={{ color: 'var(--text-muted)' }}>Passe en</span></div>
+          <div style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 3, marginBottom: 6 }}><span style={{ color: 'var(--text-muted)' }}>Double la</span></div>
+          <div style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 3 }}><span style={{ color: 'var(--text-muted)' }}>Exclu pour</span></div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+      {/* Résultat */}
+      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 8, textAlign: 'center' }}>RÉSULTAT</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 10 }}>
+          {[
+            "Doit s'appliquer", 'Peut mieux faire', 'Travail satisfaisant', 'Bon travail', 'Excellent élève',
+            'A fait des efforts', "Peu d'amélioration pour le travail", 'Elève faible', 'Ne fait aucun effort', 'Discipline insuffisante',
+          ].map(m => (
+            <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 10, height: 10, border: '1px solid var(--text)', display: 'inline-block', flexShrink: 0 }} /> {m}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Signatures */}
+      <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-end', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 36 }}>Signature du Directeur</div>
           <div style={{ borderTop: '1px solid var(--text)', paddingTop: 4, fontSize: 10, color: 'var(--text-muted)' }}>Cachet et signature</div>
@@ -1060,6 +1197,32 @@ export const SettingsPage: React.FC = () => {
                   <div className="form-group">
                     <label className="form-label">{t('settings.pays')}</label>
                     <input className="form-control" value={draft.pays} onChange={e => setDraft(d => ({ ...d, pays: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Boîte postale (B.P.)</label>
+                    <input className="form-control" value={draft.bp} onChange={e => setDraft(d => ({ ...d, bp: e.target.value }))} placeholder="5090" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Téléphone(s)</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input className="form-control" value={draft.telephone1} onChange={e => setDraft(d => ({ ...d, telephone1: e.target.value }))} placeholder="90 84 18 10" />
+                      <input className="form-control" value={draft.telephone2} onChange={e => setDraft(d => ({ ...d, telephone2: e.target.value }))} placeholder="91 99 36 29" />
+                    </div>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Ministère (en-tête bulletin)</label>
+                    <input className="form-control" value={draft.ministere} onChange={e => setDraft(d => ({ ...d, ministere: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">République / devise nationale</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input className="form-control" value={draft.republique} onChange={e => setDraft(d => ({ ...d, republique: e.target.value }))} />
+                      <input className="form-control" value={draft.deviseNationale} onChange={e => setDraft(d => ({ ...d, deviseNationale: e.target.value }))} />
+                    </div>
                   </div>
                 </div>
                 <div className="form-row">

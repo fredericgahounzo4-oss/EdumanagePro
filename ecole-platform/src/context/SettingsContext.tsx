@@ -11,18 +11,34 @@ export interface AppSettings {
   theme: 'clair' | 'sombre';
   emailNotif: boolean;
   smsNotif: boolean;
+  /** Boîte postale de l'établissement, affichée sur les documents officiels (bulletins, reçus). */
+  bp: string;
+  telephone1: string;
+  telephone2: string;
+  /** En-tête ministériel affiché sur les bulletins (ex. "Ministère des Enseignements Primaire et Secondaire"). */
+  ministere: string;
+  /** Nom du pays tel qu'affiché sur les documents officiels (ex. "République Togolaise"). */
+  republique: string;
+  /** Devise nationale affichée sur les bulletins (ex. "Travail - Liberté - Patrie"). */
+  deviseNationale: string;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  nomEcole: 'EduManage Pro',
+  nomEcole: 'Complexe Scolaire St Martial',
   ville: 'Lomé',
   pays: 'Togo',
-  anneeScolaire: '2024-2025',
+  anneeScolaire: '2025-2026',
   devise: 'FCFA',
   langue: 'fr',
   theme: 'clair',
   emailNotif: true,
   smsNotif: false,
+  bp: '5090',
+  telephone1: '90 84 18 10',
+  telephone2: '91 99 36 29',
+  ministere: 'Ministère des Enseignements Primaire et Secondaire',
+  republique: 'République Togolaise',
+  deviseNationale: 'Travail - Liberté - Patrie',
 };
 
 const STORAGE_KEY = 'edumanage-settings';
