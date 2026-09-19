@@ -3,6 +3,7 @@ import { Users, CreditCard, TrendingUp, BookOpen, AlertCircle, Clock, UserX, Che
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Eleve, Paiement, Note, Classe, Matiere, Notification, CreneauEDT, Presence } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { fetchEleves, fetchPaiements, fetchNotes, fetchClasses, fetchMatieres, fetchNotifications, fetchEmploiDuTemps, fetchPresences } from '../api/resources';
 import { errorMessage } from '../api/client';
 import { classesDuProfesseur, elevesDuProfesseur } from '../utils/permissions';
@@ -31,6 +32,7 @@ const computePaiementStats = (paiements: Paiement[]) => {
 
 const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigate }) => {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [paiements, setPaiements] = useState<Paiement[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -87,7 +89,7 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigat
               <div className="page-title">Bonjour, {user.prenom} 👋</div>
               <div className="page-subtitle">Suivi de {monEleve?.prenom} {monEleve?.nom} — {monEleve?.classe}</div>
             </div>
-            <span className="badge badge-success">Année 2024-2025</span>
+            <span className="badge badge-success">Année {settings.anneeScolaire}</span>
           </div>
         </div>
 
@@ -159,7 +161,7 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigat
           <div className="flex items-center justify-between">
             <div>
               <div className="page-title">Bonjour, {user.prenom} 👋</div>
-              <div className="page-subtitle">Espace Professeur — Année 2024-2025</div>
+              <div className="page-subtitle">Espace Professeur — Année {settings.anneeScolaire}</div>
             </div>
           </div>
         </div>
@@ -209,7 +211,7 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigat
         <div className="flex items-center justify-between">
           <div>
             <div className="page-title">Tableau de bord</div>
-            <div className="page-subtitle">Vue d'ensemble — Année scolaire 2024-2025</div>
+            <div className="page-subtitle">Vue d'ensemble — Année scolaire {settings.anneeScolaire}</div>
           </div>
           <button className="btn btn-primary" onClick={() => onNavigate('eleves')}>
             <Users size={14} /> Gérer les élèves

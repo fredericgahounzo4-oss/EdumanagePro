@@ -165,6 +165,7 @@ export const PresencesPage: React.FC = () => {
 // ===== CLASSES =====
 export const ClassesPage: React.FC = () => {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [classes, setClasses] = useState<Classe[]>([]);
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [professeurs, setProfesseurs] = useState<User[]>([]);
@@ -214,7 +215,7 @@ export const ClassesPage: React.FC = () => {
     <div>
       <div className="page-header">
         <div className="flex items-center justify-between">
-          <div><div className="page-title">Gestion des classes</div><div className="page-subtitle">{classes.length} classes — Année 2024-2025</div></div>
+          <div><div className="page-title">Gestion des classes</div><div className="page-subtitle">{classes.length} classes — Année {settings.anneeScolaire}</div></div>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
@@ -987,7 +988,7 @@ export const BulletinsPage: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchClasses(), fetchMatieres(), fetchEleves(), fetchNotes(), fetchUsersByRole('professeur')])
+    Promise.all([fetchClasses(), fetchMatieres(), fetchEleves(), fetchNotes(), fetchUsersByRole('professeur').catch(() => [] as User[])])
       .then(([c, m, e, n, p]) => { if (!cancelled) { setClasses(c); setMatieres(m); setEleves(e); setNotes(n); setProfesseurs(p); setSelectedClasse(prev => prev || c[0]?.id || ''); } })
       .catch(err => { if (!cancelled) setError(errorMessage(err)); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -1357,7 +1358,7 @@ export const TitulairePage: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchClasses(), fetchMatieres(), fetchEleves(), fetchNotes(), fetchPaiements(), fetchUsersByRole('professeur')])
+    Promise.all([fetchClasses(), fetchMatieres(), fetchEleves(), fetchNotes(), fetchPaiements(), fetchUsersByRole('professeur').catch(() => [] as User[])])
       .then(([c, m, e, n, p, prof]) => {
         if (cancelled) return;
         setClasses(c); setMatieres(m); setEleves(e); setNotes(n); setPaiements(p); setProfesseurs(prof);

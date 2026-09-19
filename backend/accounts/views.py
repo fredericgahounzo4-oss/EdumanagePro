@@ -58,23 +58,50 @@ class IsAdmin(permissions.BasePermission):
         return bool(request.user and request.user.is_authenticated and request.user.role == 'admin')
 
 
+class IsAdminOrListProfesseurs(permissions.BasePermission):
+    """
+    Admin -> accès complet (liste, détail, création, modification, reset mdp).
+    Tout autre utilisateur connecté -> peut uniquement lister les comptes
+    professeur (GET /api/auth/users/?role=professeur), pour afficher les
+    noms des enseignants sur les bulletins et la fiche "classe titulaire".
+    Rien d'autre n'est autorisé aux non-admins (pas de détail, pas d'écriture,
+    pas de liste non filtrée par rôle).
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        if user.role == 'admin':
+            return True
+        return (
+            request.method in permissions.SAFE_METHODS
+            and view.action == 'list'
+            and request.query_params.get('role') == 'professeur'
+        )
+
+
 class UserViewSet(viewsets.ModelViewSet):
     """
     Gestion des comptes — réservée à l'admin. Remplace le Django admin pour
     la création des comptes Professeur et Surveillant : l'admin les crée
     depuis l'interface (Comptes), avec un mot de passe généré ou choisi.
     Filtrable par rôle en lecture : /api/auth/users/?role=professeur
+    (les non-admins peuvent aussi lister avec ce filtre précis, en lecture
+    seule, pour afficher les noms des professeurs ailleurs dans l'appli).
     """
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrListProfesseurs]
     http_method_names = ['get', 'post', 'patch', 'head', 'options']
 
     def get_serializer_class(self):
         return UserCreateSerializer if self.action == 'create' else UserSerializer
 
     def get_queryset(self):
-        if self.request.user.role != 'admin':
-            return User.objects.none()
         qs = User.objects.all().order_by('nom', 'prenom')
+        if self.request.user.role != 'admin':
+            # Les non-admins ne passent le contrôle de permission ci-dessus
+            # que pour une liste filtrée sur role=professeur — on applique
+            # le même filtre ici par sécurité, quel que soit le paramètre reçu.
+            return qs.filter(role='professeur')
         role = self.request.query_params.get('role')
         if role:
             qs = qs.filter(role=role)
