@@ -523,6 +523,10 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 /* Impression du bulletin et du reçu (bouton "Télécharger PDF" -> window.print()) */
+@page {
+  margin: 12mm;
+}
+
 @media print {
   body * { visibility: hidden; }
   .bulletin-print, .bulletin-print *, .receipt-print, .receipt-print * { visibility: visible; }

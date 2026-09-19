@@ -21,6 +21,8 @@ export interface AppSettings {
   republique: string;
   /** Devise nationale affichée sur les bulletins (ex. "Travail - Liberté - Patrie"). */
   deviseNationale: string;
+  /** Couleur d'accent utilisée sur le bulletin de notes (en-tête, tableau, moyenne). */
+  couleurBulletin: string;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -39,6 +41,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   ministere: 'Ministère des Enseignements Primaire et Secondaire',
   republique: 'République Togolaise',
   deviseNationale: 'Travail - Liberté - Patrie',
+  couleurBulletin: '#2563a8',
 };
 
 const STORAGE_KEY = 'edumanage-settings';

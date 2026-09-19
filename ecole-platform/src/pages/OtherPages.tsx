@@ -600,6 +600,15 @@ const appreciationFor = (avg: number | null) =>
 
 const normalizeNom = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
+const hexToRgba = (hex: string, alpha: number) => {
+  const clean = (hex || '#2563a8').replace('#', '');
+  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+  const bigint = parseInt(full, 16);
+  if (Number.isNaN(bigint)) return `rgba(37, 99, 168, ${alpha})`;
+  const r = (bigint >> 16) & 255, g = (bigint >> 8) & 255, b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 const FACULTATIVE_MATCHERS: { label: string; keywords: string[] }[] = [
   { label: 'EPS', keywords: ['eps', 'sport', 'education physique'] },
   { label: 'Dessin', keywords: ['dessin'] },
@@ -700,6 +709,9 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
 
   const mention = moyenneGenerale === null ? '—' : moyenneGenerale >= 16 ? 'Excellent' : moyenneGenerale >= 14 ? 'Très bien' : moyenneGenerale >= 12 ? 'Bien' : moyenneGenerale >= 10 ? 'Passable' : 'Insuffisant';
 
+  const accent = settings.couleurBulletin || '#2563a8';
+  const accentPale = hexToRgba(accent, 0.12);
+
   const renderRow = (label: string, r: ReturnType<typeof computeRow> | null, key: string) => (
     <tr key={key} style={{ background: 'white' }}>
       <td style={{ padding: '5px 7px', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{label}</td>
@@ -723,12 +735,12 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
     <div className="card bulletin-print" style={{ padding: '24px 28px', maxWidth: 920, margin: '0 auto', fontSize: 11 }}>
       {/* En-tête officiel */}
       <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr 220px', gap: 10, alignItems: 'center', borderBottom: '2px solid var(--text)', paddingBottom: 10, marginBottom: 10 }}>
-        <div style={{ width: 74, height: 74, borderRadius: '50%', border: '2px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 8, fontWeight: 800, color: 'var(--primary)', lineHeight: 1.1, padding: 4 }}>
+        <div style={{ width: 74, height: 74, borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 8, fontWeight: 800, color: accent, lineHeight: 1.1, padding: 4 }}>
           {settings.nomEcole.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 6).toUpperCase()}
         </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>{settings.ministere}</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)', marginTop: 2 }}>{settings.nomEcole}</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: accent, marginTop: 2 }}>{settings.nomEcole}</div>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
             B.P: {settings.bp} {settings.ville}-{settings.pays} — Tél : {settings.telephone1}{settings.telephone2 ? ` / ${settings.telephone2}` : ''}
           </div>
@@ -761,7 +773,7 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
       <div className="table-wrap">
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 4 }}>
           <thead>
-            <tr style={{ background: 'var(--primary)', color: 'white' }}>
+            <tr style={{ background: accent, color: 'white' }}>
               <th style={{ padding: '5px 7px', textAlign: 'left', fontSize: 9 }}>Matières</th>
               <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Notes d'interro /20</th>
               <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Notes de devoir /20</th>
@@ -778,7 +790,7 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
           </thead>
           <tbody>
             {rowsData.map(r => renderRow(r.matiere.nom, r, r.matiere.id))}
-            <tr style={{ background: 'var(--primary-pale)', fontWeight: 700 }}>
+            <tr style={{ background: accentPale, fontWeight: 700 }}>
               <td style={{ padding: '6px 7px' }}>TOTAL</td>
               <td colSpan={5} />
               <td style={{ padding: '6px 7px', textAlign: 'center' }}>{totalCoeff || '—'}</td>
@@ -1235,6 +1247,15 @@ export const SettingsPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input className="form-control" value={draft.republique} onChange={e => setDraft(d => ({ ...d, republique: e.target.value }))} />
                       <input className="form-control" value={draft.deviseNationale} onChange={e => setDraft(d => ({ ...d, deviseNationale: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Couleur du bulletin de notes</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="color" value={draft.couleurBulletin} onChange={e => setDraft(d => ({ ...d, couleurBulletin: e.target.value }))} style={{ width: 44, height: 38, padding: 2, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }} />
+                      <input className="form-control" value={draft.couleurBulletin} onChange={e => setDraft(d => ({ ...d, couleurBulletin: e.target.value }))} placeholder="#2563a8" />
                     </div>
                   </div>
                 </div>
