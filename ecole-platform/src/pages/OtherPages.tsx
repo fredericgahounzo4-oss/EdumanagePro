@@ -166,6 +166,7 @@ export const PresencesPage: React.FC = () => {
 export const ClassesPage: React.FC = () => {
   const { user } = useAuth();
   const [classes, setClasses] = useState<Classe[]>([]);
+  const [eleves, setEleves] = useState<Eleve[]>([]);
   const [professeurs, setProfesseurs] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,8 +179,8 @@ export const ClassesPage: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchClasses(), canManage ? fetchUsersByRole('professeur') : Promise.resolve([])])
-      .then(([c, p]) => { if (!cancelled) { setClasses(c); setProfesseurs(p); } })
+    Promise.all([fetchClasses(), fetchEleves(), canManage ? fetchUsersByRole('professeur') : Promise.resolve([])])
+      .then(([c, e, p]) => { if (!cancelled) { setClasses(c); setEleves(e); setProfesseurs(p); } })
       .catch(err => { if (!cancelled) setError(errorMessage(err)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -217,7 +218,9 @@ export const ClassesPage: React.FC = () => {
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-        {classes.map(c => (
+        {classes.map(c => {
+          const effectifReel = eleves.filter(e => e.classe === c.nom).length;
+          return (
           <div key={c.id} className="card" style={{ padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
@@ -228,7 +231,7 @@ export const ClassesPage: React.FC = () => {
             </div>
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
               {[
-                { label: 'Effectif', value: `${c.effectif} élèves`, icon: <Users size={14} /> },
+                { label: 'Effectif', value: `${effectifReel} élèves`, icon: <Users size={14} /> },
                 { label: 'Niveau', value: c.niveau, icon: <BookOpen size={14} /> },
               ].map(row => (
                 <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
@@ -249,7 +252,8 @@ export const ClassesPage: React.FC = () => {
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {editClasse && (
@@ -732,7 +736,7 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, fontSize: 11, marginBottom: 4 }}>
         <div>Année scolaire <b>{settings.anneeScolaire}</b></div>
         <div>Classe <b>{eleve.classe}</b></div>
-        <div>Effectif <b>{classeObj?.effectif ?? classeEleves.length}</b></div>
+        <div>Effectif <b>{classeEleves.length}</b></div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8, flexWrap: 'wrap', gap: 8 }}>
         <div>Nom et prénoms de l'élève <b>{eleve.nom} {eleve.prenom}</b></div>
