@@ -73,10 +73,24 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigat
 
   // Parent dashboard
   if (user?.role === 'parent') {
-    const monEleve = eleves.find(e => e.parentId === user.id) || eleves[0];
-    const mesNotes = notes.filter(n => n.eleveId === monEleve?.id);
+    const monEleve = eleves.find(e => e.parentId === user.id);
+
+    if (!monEleve) {
+      return (
+        <div>
+          <div className="page-header">
+            <div><div className="page-title">Bonjour, {user.prenom} 👋</div><div className="page-subtitle">Suivi de votre enfant</div></div>
+          </div>
+          <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+            Aucun élève n'est encore rattaché à votre compte. Contactez l'administration de l'établissement.
+          </div>
+        </div>
+      );
+    }
+
+    const mesNotes = notes.filter(n => n.eleveId === monEleve.id);
     const maNotes = mesNotes.length ? (mesNotes.reduce((s, n) => s + n.valeur, 0) / mesNotes.length).toFixed(1) : '—';
-    const mesPaiements = paiements.filter(p => p.eleveId === monEleve?.id);
+    const mesPaiements = paiements.filter(p => p.eleveId === monEleve.id);
     const impayeParent = mesPaiements.filter(p => p.status === 'impayé').reduce((s, p) => s + p.montant, 0);
     const notifNonLues = notifications.filter(n => !n.lu);
     const mesNotesPerf = computePerformanceData(mesNotes);
@@ -87,7 +101,7 @@ const Dashboard: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigat
           <div className="flex items-center justify-between">
             <div>
               <div className="page-title">Bonjour, {user.prenom} 👋</div>
-              <div className="page-subtitle">Suivi de {monEleve?.prenom} {monEleve?.nom} — {monEleve?.classe}</div>
+              <div className="page-subtitle">Suivi de {monEleve.prenom} {monEleve.nom} — {monEleve.classe}</div>
             </div>
             <span className="badge badge-success">Année {settings.anneeScolaire}</span>
           </div>
