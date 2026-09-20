@@ -25,6 +25,8 @@ export interface AppSettings {
   couleurBulletin: string;
   /** Couleur de fond de la page du bulletin de notes. */
   couleurFondBulletin: string;
+  /** Logo/cachet de l'établissement (image encodée en base64), affiché en haut du bulletin. Vide = pas de logo (initiales affichées à la place). */
+  logoUrl: string;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -45,6 +47,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   deviseNationale: 'Travail - Liberté - Patrie',
   couleurBulletin: '#2563a8',
   couleurFondBulletin: '#ffffff',
+  logoUrl: '',
 };
 
 const STORAGE_KEY = 'edumanage-settings';

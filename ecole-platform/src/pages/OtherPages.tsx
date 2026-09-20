@@ -730,14 +730,19 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
     <div className="card bulletin-print" style={{ padding: '14px 18px', maxWidth: 920, margin: '0 auto', fontSize: 10, background: settings.couleurFondBulletin }}>
       {/* En-tête officiel */}
       <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 190px', gap: 8, alignItems: 'center', borderBottom: '2px solid var(--text)', paddingBottom: 6, marginBottom: 6 }}>
-        <div style={{ width: 52, height: 52, borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 7, fontWeight: 800, color: accent, lineHeight: 1.1, padding: 3 }}>
-          {settings.nomEcole.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 6).toUpperCase()}
-        </div>
+        {settings.logoUrl ? (
+          <img src={settings.logoUrl} alt="Logo" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${accent}` }} />
+        ) : (
+          <div style={{ width: 52, height: 52, borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 7, fontWeight: 800, color: accent, lineHeight: 1.1, padding: 3 }}>
+            {settings.nomEcole.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 6).toUpperCase()}
+          </div>
+        )}
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' }}>{settings.ministere}</div>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', lineHeight: 1.3 }}>{settings.ministere}</div>
           <div style={{ fontSize: 13, fontWeight: 800, color: accent, marginTop: 1 }}>{settings.nomEcole}</div>
-          <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 1 }}>
-            B.P: {settings.bp} {settings.ville}-{settings.pays} — Tél : {settings.telephone1}{settings.telephone2 ? ` / ${settings.telephone2}` : ''}
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 1, lineHeight: 1.3 }}>
+            B.P: {settings.bp} {settings.ville}-{settings.pays}<br />
+            Tél : {settings.telephone1}{settings.telephone2 ? <><br />{settings.telephone2}</> : ''}
           </div>
         </div>
         <div style={{ textAlign: 'right', fontSize: 9, fontWeight: 700 }}>
@@ -746,8 +751,11 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
-        <div style={{ fontSize: 12, fontWeight: 800 }}>BULLETIN DE NOTES N°.... DU {trimestre}{trimestre === 1 ? 'er' : 'ème'} TRIMESTRE</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 800 }}>BULLETIN DE NOTES N°....</div>
+          <div style={{ fontSize: 10, marginTop: 1 }}>DU {trimestre}{trimestre === 1 ? 'er' : 'ème'} Trimestre</div>
+        </div>
         <div style={{ display: 'flex', gap: 12, fontSize: 9 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 10, height: 10, border: '1px solid var(--text)', display: 'inline-block' }} /> Doublant</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 10, height: 10, border: '1px solid var(--text)', display: 'inline-block' }} /> Nouveau</span>
@@ -1206,6 +1214,20 @@ export const SettingsPage: React.FC = () => {
   const [saved, setSaved] = useState(false);
   const [pwd, setPwd] = useState({ actuel: '', nouveau: '', confirmer: '' });
   const [pwdMsg, setPwdMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [logoError, setLogoError] = useState<string | null>(null);
+
+  const handleLogoUpload = (file: File | undefined) => {
+    if (!file) return;
+    setLogoError(null);
+    if (file.size > 500 * 1024) {
+      setLogoError('Image trop lourde (max 500 Ko). Utilisez une image plus légère, idéalement carrée.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setDraft(d => ({ ...d, logoUrl: String(reader.result) }));
+    reader.onerror = () => setLogoError("Impossible de lire ce fichier.");
+    reader.readAsDataURL(file);
+  };
 
   const tabs: { id: typeof tab; labelKey: string }[] = [
     { id: 'general', labelKey: 'settings.tab.general' },
@@ -1292,6 +1314,26 @@ export const SettingsPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input className="form-control" value={draft.republique} onChange={e => setDraft(d => ({ ...d, republique: e.target.value }))} />
                       <input className="form-control" value={draft.deviseNationale} onChange={e => setDraft(d => ({ ...d, deviseNationale: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Logo / cachet de l'établissement</label>
+                    {logoError && <div style={{ background: 'var(--danger-pale)', color: 'var(--danger)', padding: '6px 10px', borderRadius: 6, fontSize: 12, marginBottom: 8 }}>{logoError}</div>}
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      {draft.logoUrl ? (
+                        <img src={draft.logoUrl} alt="Logo" style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
+                      ) : (
+                        <div style={{ width: 56, height: 56, borderRadius: '50%', border: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text-light)', textAlign: 'center' }}>Aucun</div>
+                      )}
+                      <input type="file" accept="image/*" onChange={e => handleLogoUpload(e.target.files?.[0])} style={{ fontSize: 12 }} />
+                      {draft.logoUrl && (
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setDraft(d => ({ ...d, logoUrl: '' }))}>Retirer</button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                      Affiché en haut à gauche du bulletin. Idéalement une image carrée, moins de 500 Ko. Sans logo, les initiales de l'école sont affichées à la place.
                     </div>
                   </div>
                 </div>
