@@ -7,14 +7,6 @@ import { fetchClasses, fetchMatieres, fetchEleves, fetchEmploiDuTemps, upsertCre
 import { errorMessage } from '../api/client';
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'] as const;
-// Créneaux proposés par défaut au premier chargement — l'admin peut en créer
-// d'autres librement (ex: 07:00-07:55) via "Nouveau créneau horaire".
-const DEFAULT_SLOTS: { debut: string; fin: string }[] = [
-  { debut: '07:30', fin: '09:30' },
-  { debut: '09:30', fin: '11:30' },
-  { debut: '13:00', fin: '15:00' },
-  { debut: '15:00', fin: '17:00' },
-];
 
 const NEW_MATIERE = '__new_matiere__';
 
@@ -76,9 +68,10 @@ const EmploiDuTempsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classesVisibles.length]);
 
-  // Les lignes de la grille sont dynamiques : les 4 créneaux par défaut + tout
-  // créneau horaire personnalisé déjà créé (ex: 07:00-07:55), toutes classes
-  // confondues. Une seule ligne par heure de début, même si des cours qui y
+  // Les lignes de la grille sont dynamiques : une ligne apparaît uniquement
+  // pour les heures de début réellement utilisées par au moins un cours de
+  // la classe sélectionnée — pas de ligne vide, pas de créneaux par défaut
+  // non utilisés. Une seule ligne par heure de début, même si des cours qui y
   // démarrent ont des durées différentes selon le jour : chaque cellule
   // affiche et utilise l'horaire propre du cours qu'elle contient (voir
   // getCoursForSlot / openSlot ci-dessous), jamais un horaire "de ligne"
@@ -86,10 +79,11 @@ const EmploiDuTempsPage: React.FC = () => {
   // où l'un écrasait l'heure de fin affichée de l'autre.
   const creneauxRows = useMemo(() => {
     const byDebut = new Map<string, { debut: string; fin: string }>();
-    DEFAULT_SLOTS.forEach(s => byDebut.set(s.debut, s));
-    emploiDuTemps.forEach(c => byDebut.set(c.heureDebut, { debut: c.heureDebut, fin: c.heureFin }));
+    emploiDuTemps
+      .filter(c => c.classeId === selectedClasse)
+      .forEach(c => byDebut.set(c.heureDebut, { debut: c.heureDebut, fin: c.heureFin }));
     return Array.from(byDebut.values()).sort((a, b) => toMinutes(a.debut) - toMinutes(b.debut));
-  }, [emploiDuTemps]);
+  }, [emploiDuTemps, selectedClasse]);
 
   const getCoursForSlot = (jour: string, debut: string) =>
     emploiDuTemps.find(e => e.jour === jour && e.heureDebut === debut && e.classeId === selectedClasse);
@@ -256,6 +250,12 @@ const EmploiDuTempsPage: React.FC = () => {
             </div>
 
             {/* Time rows */}
+            {creneauxRows.length === 0 && (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+                Aucun cours programmé pour cette classe pour le moment.
+                {canEdit && ' Cliquez sur "Nouveau créneau horaire" pour en ajouter un.'}
+              </div>
+            )}
             {creneauxRows.map((slot, ci) => (
               <div key={slot.debut} style={{ display: 'grid', gridTemplateColumns: `repeat(${JOURS.length}, 1fr)`, borderBottom: ci < creneauxRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 {JOURS.map(jour => {
