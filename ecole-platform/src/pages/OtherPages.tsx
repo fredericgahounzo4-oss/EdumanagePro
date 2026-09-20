@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Presence, Notification, Classe, Matiere, Eleve, Note, Paiement, User } from '../types';
 import { Check, X, Clock, AlertCircle, Bell, BellOff, Download, Users, TrendingUp, BookOpen, CheckCircle, Lock, Palette, Save, GraduationCap } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { useConnectivity } from '../context/ConnectivityContext';
+import { downloadElementAsPdf, downloadElementsAsPdf } from '../utils/pdfExport';
 import {
   fetchClasses, fetchMatieres, fetchEleves, fetchNotes, fetchPaiements,
   fetchPresences, upsertPresence, fetchNotifications, marquerNotificationLue,
@@ -729,7 +730,7 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
   );
 
   return (
-    <div className="card bulletin-print" style={{ padding: '14px 18px', maxWidth: 920, margin: '0 auto', fontSize: 10 }}>
+    <div className="card bulletin-print" style={{ padding: '14px 18px', maxWidth: 920, margin: '0 auto', fontSize: 10, background: settings.couleurFondBulletin }}>
       {/* En-tête officiel */}
       <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 190px', gap: 8, alignItems: 'center', borderBottom: '2px solid var(--text)', paddingBottom: 6, marginBottom: 6 }}>
         <div style={{ width: 52, height: 52, borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 7, fontWeight: 800, color: accent, lineHeight: 1.1, padding: 3 }}>
@@ -1007,6 +1008,9 @@ export const BulletinsPage: React.FC = () => {
   const [selectedTrimestre, setSelectedTrimestre] = useState<1 | 2 | 3>(1);
   const [viewEleve, setViewEleve] = useState<string | null>(null);
   const [viewAllClasse, setViewAllClasse] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const bulletinRef = useRef<HTMLDivElement>(null);
+  const allBulletinRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const classeObj = classes.find(c => c.id === selectedClasse);
   const classeEleves = eleves.filter(e => e.classe === classeObj?.nom);
@@ -1023,7 +1027,44 @@ export const BulletinsPage: React.FC = () => {
     return parties.reduce((s, x) => s + (x.avg as number) * x.coeff, 0) / parties.reduce((s, x) => s + x.coeff, 0);
   };
 
-  const handlePrint = () => window.print();
+  const bulletinFilename = (e: Eleve) => `bulletin-${e.nom}-${e.prenom}-T${selectedTrimestre}.pdf`.replace(/\s+/g, '_');
+
+  const handleDownloadPdf = async () => {
+    if (!bulletinRef.current || !viewEleveObj || exporting) return;
+    setExporting(true);
+    try {
+      await downloadElementAsPdf(bulletinRef.current, bulletinFilename(viewEleveObj));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleQuickDownload = (eleveId: string) => {
+    setViewEleve(eleveId);
+    setTimeout(async () => {
+      const el = bulletinRef.current;
+      const e = eleves.find(x => x.id === eleveId);
+      if (!el || !e) return;
+      setExporting(true);
+      try {
+        await downloadElementAsPdf(el, bulletinFilename(e));
+      } finally {
+        setExporting(false);
+      }
+    }, 150);
+  };
+
+  const handleDownloadAllPdf = async () => {
+    if (exporting) return;
+    const elements = classeEleves.map(e => allBulletinRefs.current[e.id]).filter((el): el is HTMLDivElement => !!el);
+    if (!elements.length) return;
+    setExporting(true);
+    try {
+      await downloadElementsAsPdf(elements, `bulletins-${classeObj?.nom || 'classe'}-T${selectedTrimestre}.pdf`.replace(/\s+/g, '_'));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (loading) return <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Chargement...</div>;
   if (error) return <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--danger)' }}>{error}</div>;
@@ -1095,7 +1136,7 @@ export const BulletinsPage: React.FC = () => {
                       </td>
                       <td style={{ textAlign: 'right', display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button className="btn btn-ghost btn-sm" onClick={() => setViewEleve(e.id)}>Voir le bulletin</button>
-                        <button className="btn btn-accent btn-sm" onClick={() => { setViewEleve(e.id); setTimeout(handlePrint, 150); }}><Download size={12} /> PDF</button>
+                        <button className="btn btn-accent btn-sm" onClick={() => handleQuickDownload(e.id)} disabled={exporting}><Download size={12} /> PDF</button>
                       </td>
                     </tr>
                   );
@@ -1113,31 +1154,33 @@ export const BulletinsPage: React.FC = () => {
             <div className="modal-header no-print">
               <div className="modal-title">Aperçu du bulletin</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-accent btn-sm" onClick={handlePrint}><Download size={13} /> Télécharger PDF</button>
+                <button className="btn btn-accent btn-sm" onClick={handleDownloadPdf} disabled={exporting}><Download size={13} /> {exporting ? 'Génération...' : 'Télécharger PDF'}</button>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setViewEleve(null)}><X size={16} /></button>
               </div>
             </div>
             <div className="modal-body" style={{ background: 'var(--surface2)' }}>
-              <BulletinPreview eleve={viewEleveObj} classes={classes} matieres={matieres} notes={notes} eleves={eleves} professeurs={professeurs} trimestre={selectedTrimestre} />
+              <div ref={bulletinRef}>
+                <BulletinPreview eleve={viewEleveObj} classes={classes} matieres={matieres} notes={notes} eleves={eleves} professeurs={professeurs} trimestre={selectedTrimestre} />
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tous les bulletins de la classe, un par page à l'impression */}
+      {/* Tous les bulletins de la classe, un par page dans un seul PDF */}
       {viewAllClasse && (
         <div className="modal-overlay bulletin-modal-overlay" onClick={() => setViewAllClasse(false)}>
           <div className="modal bulletin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 760 }}>
             <div className="modal-header no-print">
               <div className="modal-title">Tous les bulletins — {classeObj?.nom} ({classeEleves.length})</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-accent btn-sm" onClick={handlePrint}><Download size={13} /> Télécharger PDF (tout)</button>
+                <button className="btn btn-accent btn-sm" onClick={handleDownloadAllPdf} disabled={exporting}><Download size={13} /> {exporting ? 'Génération...' : 'Télécharger PDF (tout)'}</button>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setViewAllClasse(false)}><X size={16} /></button>
               </div>
             </div>
             <div className="modal-body" style={{ background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 20 }}>
               {classeEleves.map(e => (
-                <div key={e.id} className="bulletin-page-break">
+                <div key={e.id} className="bulletin-page-break" ref={el => { allBulletinRefs.current[e.id] = el; }}>
                   <BulletinPreview eleve={e} classes={classes} matieres={matieres} notes={notes} eleves={eleves} professeurs={professeurs} trimestre={selectedTrimestre} />
                 </div>
               ))}
@@ -1252,6 +1295,13 @@ export const SettingsPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <input type="color" value={draft.couleurBulletin} onChange={e => setDraft(d => ({ ...d, couleurBulletin: e.target.value }))} style={{ width: 44, height: 38, padding: 2, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }} />
                       <input className="form-control" value={draft.couleurBulletin} onChange={e => setDraft(d => ({ ...d, couleurBulletin: e.target.value }))} placeholder="#2563a8" />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Couleur de fond du bulletin</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="color" value={draft.couleurFondBulletin} onChange={e => setDraft(d => ({ ...d, couleurFondBulletin: e.target.value }))} style={{ width: 44, height: 38, padding: 2, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }} />
+                      <input className="form-control" value={draft.couleurFondBulletin} onChange={e => setDraft(d => ({ ...d, couleurFondBulletin: e.target.value }))} placeholder="#ffffff" />
                     </div>
                   </div>
                 </div>
@@ -1372,6 +1422,8 @@ export const TitulairePage: React.FC = () => {
   const [selectedClasse, setSelectedClasse] = useState('');
   const [selectedTrimestre, setSelectedTrimestre] = useState<1 | 2 | 3>(1);
   const [viewEleve, setViewEleve] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const bulletinRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -1426,6 +1478,16 @@ export const TitulairePage: React.FC = () => {
   const moyenneClasse = moyennesValides.length ? moyennesValides.reduce((s, v) => s + v, 0) / moyennesValides.length : null;
 
   const viewEleveObj = viewEleve ? eleves.find(e => e.id === viewEleve) : undefined;
+
+  const handleDownloadPdf = async () => {
+    if (!bulletinRef.current || !viewEleveObj || exporting) return;
+    setExporting(true);
+    try {
+      await downloadElementAsPdf(bulletinRef.current, `bulletin-${viewEleveObj.nom}-${viewEleveObj.prenom}-T${selectedTrimestre}.pdf`.replace(/\s+/g, '_'));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div>
@@ -1527,12 +1589,14 @@ export const TitulairePage: React.FC = () => {
             <div className="modal-header no-print">
               <div className="modal-title">Bulletin</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-accent btn-sm" onClick={() => window.print()}><Download size={13} /> Télécharger PDF</button>
+                <button className="btn btn-accent btn-sm" onClick={handleDownloadPdf} disabled={exporting}><Download size={13} /> {exporting ? 'Génération...' : 'Télécharger PDF'}</button>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setViewEleve(null)}><X size={16} /></button>
               </div>
             </div>
             <div className="modal-body" style={{ background: 'var(--surface2)' }}>
-              <BulletinPreview eleve={viewEleveObj} classes={classes} matieres={matieres} notes={notes} eleves={eleves} professeurs={professeurs} trimestre={selectedTrimestre} />
+              <div ref={bulletinRef}>
+                <BulletinPreview eleve={viewEleveObj} classes={classes} matieres={matieres} notes={notes} eleves={eleves} professeurs={professeurs} trimestre={selectedTrimestre} />
+              </div>
             </div>
           </div>
         </div>

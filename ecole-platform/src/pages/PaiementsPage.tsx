@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, X, Download, CreditCard, AlertCircle, CheckCircle, ChevronRight } from 'lucide-react';
 import { Paiement, Eleve, Classe } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +6,7 @@ import { useConnectivity } from '../context/ConnectivityContext';
 import { fetchPaiements, fetchEleves, fetchClasses, createPaiement, updatePaiementStatus } from '../api/resources';
 import { errorMessage } from '../api/client';
 import { ReceiptPreview } from './OtherPages';
+import { downloadElementAsPdf } from '../utils/pdfExport';
 
 const ALL = '__all__';
 
@@ -24,7 +25,17 @@ const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements }) => {
   const { user } = useAuth();
   const [detailEleve, setDetailEleve] = useState<string | null>(null);
   const [receiptPaiement, setReceiptPaiement] = useState<string | null>(null);
-  const handlePrintReceipt = () => window.print();
+  const [exportingReceipt, setExportingReceipt] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
+  const handleDownloadReceiptPdf = async (reference: string) => {
+    if (!receiptRef.current || exportingReceipt) return;
+    setExportingReceipt(true);
+    try {
+      await downloadElementAsPdf(receiptRef.current, `recu-${reference}.pdf`.replace(/\s+/g, '_'));
+    } finally {
+      setExportingReceipt(false);
+    }
+  };
 
   const mesEnfants = eleves.filter(e => e.parentId === user?.id);
 
@@ -131,12 +142,14 @@ const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements }) => {
               <div className="modal-header no-print">
                 <div className="modal-title">Reçu de paiement</div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-accent btn-sm" onClick={handlePrintReceipt}><Download size={13} /> Télécharger PDF</button>
+                  <button className="btn btn-accent btn-sm" onClick={() => handleDownloadReceiptPdf(p.reference)} disabled={exportingReceipt}><Download size={13} /> {exportingReceipt ? 'Génération...' : 'Télécharger PDF'}</button>
                   <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setReceiptPaiement(null)}><X size={16} /></button>
                 </div>
               </div>
               <div className="modal-body" style={{ background: 'var(--surface2)' }}>
-                <ReceiptPreview paiement={p} eleve={e} />
+                <div ref={receiptRef}>
+                  <ReceiptPreview paiement={p} eleve={e} />
+                </div>
               </div>
             </div>
           </div>
@@ -156,7 +169,17 @@ const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, o
   const [showModal, setShowModal] = useState(false);
   const [detailEleve, setDetailEleve] = useState<string | null>(null);
   const [receiptPaiement, setReceiptPaiement] = useState<string | null>(null);
-  const handlePrintReceipt = () => window.print();
+  const [exportingReceipt, setExportingReceipt] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
+  const handleDownloadReceiptPdf = async (reference: string) => {
+    if (!receiptRef.current || exportingReceipt) return;
+    setExportingReceipt(true);
+    try {
+      await downloadElementAsPdf(receiptRef.current, `recu-${reference}.pdf`.replace(/\s+/g, '_'));
+    } finally {
+      setExportingReceipt(false);
+    }
+  };
   const [form, setForm] = useState({ eleveId: eleves[0]?.id || '', montant: '', type: 'mensualite', status: 'impayé', date: new Date().toISOString().split('T')[0], mois: '' });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -451,12 +474,14 @@ const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, o
               <div className="modal-header no-print">
                 <div className="modal-title">Reçu de paiement</div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-accent btn-sm" onClick={handlePrintReceipt}><Download size={13} /> Télécharger PDF</button>
+                  <button className="btn btn-accent btn-sm" onClick={() => handleDownloadReceiptPdf(p.reference)} disabled={exportingReceipt}><Download size={13} /> {exportingReceipt ? 'Génération...' : 'Télécharger PDF'}</button>
                   <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setReceiptPaiement(null)}><X size={16} /></button>
                 </div>
               </div>
               <div className="modal-body" style={{ background: 'var(--surface2)' }}>
-                <ReceiptPreview paiement={p} eleve={e} />
+                <div ref={receiptRef}>
+                  <ReceiptPreview paiement={p} eleve={e} />
+                </div>
               </div>
             </div>
           </div>
