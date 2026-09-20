@@ -78,15 +78,19 @@ const EmploiDuTempsPage: React.FC = () => {
 
   // Les lignes de la grille sont dynamiques : les 4 créneaux par défaut + tout
   // créneau horaire personnalisé déjà créé (ex: 07:00-07:55), toutes classes confondues.
+  // Regroupées par (début, fin) et non par le seul début : deux créneaux qui
+  // commencent à la même heure mais durent différemment (ex. 07:00-07:55 et
+  // 07:00-08:45) doivent rester deux lignes distinctes, sinon l'une écrase
+  // l'heure de fin affichée — et donc modifiée à l'enregistrement — de l'autre.
   const creneauxRows = useMemo(() => {
-    const byDebut = new Map<string, { debut: string; fin: string }>();
-    DEFAULT_SLOTS.forEach(s => byDebut.set(s.debut, s));
-    emploiDuTemps.forEach(c => byDebut.set(c.heureDebut, { debut: c.heureDebut, fin: c.heureFin }));
-    return Array.from(byDebut.values()).sort((a, b) => toMinutes(a.debut) - toMinutes(b.debut));
+    const byKey = new Map<string, { debut: string; fin: string }>();
+    DEFAULT_SLOTS.forEach(s => byKey.set(`${s.debut}|${s.fin}`, s));
+    emploiDuTemps.forEach(c => byKey.set(`${c.heureDebut}|${c.heureFin}`, { debut: c.heureDebut, fin: c.heureFin }));
+    return Array.from(byKey.values()).sort((a, b) => toMinutes(a.debut) - toMinutes(b.debut) || toMinutes(a.fin) - toMinutes(b.fin));
   }, [emploiDuTemps]);
 
-  const getCoursForSlot = (jour: string, debut: string) =>
-    emploiDuTemps.find(e => e.jour === jour && e.heureDebut === debut && e.classeId === selectedClasse);
+  const getCoursForSlot = (jour: string, debut: string, fin: string) =>
+    emploiDuTemps.find(e => e.jour === jour && e.heureDebut === debut && e.heureFin === fin && e.classeId === selectedClasse);
 
   const getMatiereById = (id: string) => matieres.find(m => m.id === id);
   const matieresDeLaClasse = matieres.filter(m => m.classeId === selectedClasse);
@@ -106,7 +110,7 @@ const EmploiDuTempsPage: React.FC = () => {
 
   const openSlot = (jour: string, debut: string, fin: string) => {
     if (!canEdit) return;
-    const existing = getCoursForSlot(jour, debut);
+    const existing = getCoursForSlot(jour, debut, fin);
     setForm({ jour, heureDebut: debut, heureFin: fin, matiereId: existing?.matiereId || '', salle: existing?.salle || '' });
     setSaveError(null);
     resetMatiereForm();
@@ -247,13 +251,13 @@ const EmploiDuTempsPage: React.FC = () => {
 
             {/* Time rows */}
             {creneauxRows.map((slot, ci) => (
-              <div key={slot.debut} style={{ display: 'grid', gridTemplateColumns: '90px repeat(5, 1fr)', borderBottom: ci < creneauxRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div key={`${slot.debut}|${slot.fin}`} style={{ display: 'grid', gridTemplateColumns: '90px repeat(5, 1fr)', borderBottom: ci < creneauxRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div style={{ padding: '16px 10px', background: 'var(--surface2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{slot.debut}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{slot.fin}</div>
                 </div>
                 {JOURS.map(jour => {
-                  const cours = getCoursForSlot(jour, slot.debut);
+                  const cours = getCoursForSlot(jour, slot.debut, slot.fin);
                   const matiere = cours ? getMatiereById(cours.matiereId) : null;
 
                   return (
