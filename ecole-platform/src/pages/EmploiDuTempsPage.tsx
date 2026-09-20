@@ -6,7 +6,7 @@ import { classesDuProfesseur } from '../utils/permissions';
 import { fetchClasses, fetchMatieres, fetchEleves, fetchEmploiDuTemps, upsertCreneau, deleteCreneau, createMatiere, fetchUsersByRole } from '../api/resources';
 import { errorMessage } from '../api/client';
 
-const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'] as const;
+const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'] as const;
 // Créneaux proposés par défaut au premier chargement — l'admin peut en créer
 // d'autres librement (ex: 07:00-07:55) via "Nouveau créneau horaire".
 const DEFAULT_SLOTS: { debut: string; fin: string }[] = [
@@ -249,8 +249,7 @@ const EmploiDuTempsPage: React.FC = () => {
         <div style={{ overflowX: 'auto' }}>
           <div style={{ minWidth: 700 }}>
             {/* Header row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '90px repeat(5, 1fr)', borderBottom: '2px solid var(--border)' }}>
-              <div style={{ padding: '12px 10px', background: 'var(--surface2)', borderRight: '1px solid var(--border)' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${JOURS.length}, 1fr)`, borderBottom: '2px solid var(--border)' }}>
               {JOURS.map(j => (
                 <div key={j} style={{ padding: '12px 10px', background: 'var(--surface2)', borderRight: '1px solid var(--border)', textAlign: 'center', fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{j}</div>
               ))}
@@ -258,11 +257,7 @@ const EmploiDuTempsPage: React.FC = () => {
 
             {/* Time rows */}
             {creneauxRows.map((slot, ci) => (
-              <div key={slot.debut} style={{ display: 'grid', gridTemplateColumns: '90px repeat(5, 1fr)', borderBottom: ci < creneauxRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <div style={{ padding: '16px 10px', background: 'var(--surface2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{slot.debut}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{slot.fin}</div>
-                </div>
+              <div key={slot.debut} style={{ display: 'grid', gridTemplateColumns: `repeat(${JOURS.length}, 1fr)`, borderBottom: ci < creneauxRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 {JOURS.map(jour => {
                   const cours = getCoursForSlot(jour, slot.debut);
                   const matiere = cours ? getMatiereById(cours.matiereId) : null;
@@ -279,11 +274,9 @@ const EmploiDuTempsPage: React.FC = () => {
                           <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 2 }}>{cours.heureDebut} - {cours.heureFin}</div>
                         </div>
                       ) : (
-                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 64, borderRadius: 8, border: canEdit ? '1.5px dashed var(--border)' : 'none' }}
+                        <div style={{ height: '100%', minHeight: 64, borderRadius: 8 }}
                           onMouseEnter={e => { if (canEdit) e.currentTarget.style.background = 'var(--surface2)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-                          {canEdit ? <Plus size={14} color="var(--text-light)" /> : <span style={{ fontSize: 11, color: 'var(--border)', userSelect: 'none' }}>—</span>}
-                        </div>
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }} />
                       )}
                     </div>
                   );
