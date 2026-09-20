@@ -711,87 +711,87 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
 
   const renderRow = (label: string, r: ReturnType<typeof computeRow> | null, key: string) => (
     <tr key={key} style={{ background: 'white' }}>
-      <td style={{ padding: '5px 7px', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{label}</td>
-      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyInterro !== null && r?.moyInterro !== undefined ? r.moyInterro.toFixed(2) : '—'}</td>
-      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyDevoir !== null && r?.moyDevoir !== undefined ? r.moyDevoir.toFixed(2) : '—'}</td>
-      <td style={{ padding: '5px 7px', textAlign: 'center', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>{r?.moyClasse !== null && r?.moyClasse !== undefined ? r.moyClasse.toFixed(2) : '—'}</td>
-      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyComp !== null && r?.moyComp !== undefined ? r.moyComp.toFixed(2) : '—'}</td>
-      <td style={{ padding: '5px 7px', textAlign: 'center', fontWeight: 700, borderBottom: '1px solid var(--border)', color: !r || r.moyDes2 === null ? 'var(--text-light)' : r.moyDes2 >= 14 ? 'var(--success)' : r.moyDes2 >= 10 ? 'var(--warning)' : 'var(--danger)' }}>
+      <td style={{ padding: '3px 5px', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>{label}</td>
+      <td style={{ padding: '3px 5px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyInterro !== null && r?.moyInterro !== undefined ? r.moyInterro.toFixed(2) : '—'}</td>
+      <td style={{ padding: '3px 5px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyDevoir !== null && r?.moyDevoir !== undefined ? r.moyDevoir.toFixed(2) : '—'}</td>
+      <td style={{ padding: '3px 5px', textAlign: 'center', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>{r?.moyClasse !== null && r?.moyClasse !== undefined ? r.moyClasse.toFixed(2) : '—'}</td>
+      <td style={{ padding: '3px 5px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyComp !== null && r?.moyComp !== undefined ? r.moyComp.toFixed(2) : '—'}</td>
+      <td style={{ padding: '3px 5px', textAlign: 'center', fontWeight: 700, borderBottom: '1px solid var(--border)', color: !r || r.moyDes2 === null ? 'var(--text-light)' : r.moyDes2 >= 14 ? 'var(--success)' : r.moyDes2 >= 10 ? 'var(--warning)' : 'var(--danger)' }}>
         {r?.moyDes2 !== null && r?.moyDes2 !== undefined ? r.moyDes2.toFixed(2) : '—'}
       </td>
-      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r ? r.matiere.coefficient : '—'}</td>
-      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyDes2 !== null && r?.moyDes2 !== undefined ? (r.moyDes2 * r.matiere.coefficient).toFixed(2) : '—'}</td>
-      <td style={{ padding: '5px 7px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.rang ? `${r.rang}/${r.totalClasse}` : '—'}</td>
-      <td style={{ padding: '5px 7px', borderBottom: '1px solid var(--border)', fontSize: 10 }}>{r?.prof ? `${r.prof.prenom} ${r.prof.nom}` : '—'}</td>
-      <td style={{ padding: '5px 7px', borderBottom: '1px solid var(--border)', fontSize: 10 }}>{r ? appreciationFor(r.moyDes2) : '—'}</td>
-      <td style={{ padding: '5px 7px', borderBottom: '1px solid var(--border)' }} />
+      <td style={{ padding: '3px 5px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r ? r.matiere.coefficient : '—'}</td>
+      <td style={{ padding: '3px 5px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.moyDes2 !== null && r?.moyDes2 !== undefined ? (r.moyDes2 * r.matiere.coefficient).toFixed(2) : '—'}</td>
+      <td style={{ padding: '3px 5px', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>{r?.rang ? `${r.rang}/${r.totalClasse}` : '—'}</td>
+      <td style={{ padding: '3px 5px', borderBottom: '1px solid var(--border)', fontSize: 9 }}>{r?.prof ? `${r.prof.prenom} ${r.prof.nom}` : '—'}</td>
+      <td style={{ padding: '3px 5px', borderBottom: '1px solid var(--border)', fontSize: 9 }}>{r ? appreciationFor(r.moyDes2) : '—'}</td>
+      <td style={{ padding: '3px 5px', borderBottom: '1px solid var(--border)' }} />
     </tr>
   );
 
   return (
-    <div className="card bulletin-print" style={{ padding: '24px 28px', maxWidth: 920, margin: '0 auto', fontSize: 11 }}>
+    <div className="card bulletin-print" style={{ padding: '14px 18px', maxWidth: 920, margin: '0 auto', fontSize: 10 }}>
       {/* En-tête officiel */}
-      <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr 220px', gap: 10, alignItems: 'center', borderBottom: '2px solid var(--text)', paddingBottom: 10, marginBottom: 10 }}>
-        <div style={{ width: 74, height: 74, borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 8, fontWeight: 800, color: accent, lineHeight: 1.1, padding: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 190px', gap: 8, alignItems: 'center', borderBottom: '2px solid var(--text)', paddingBottom: 6, marginBottom: 6 }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: 7, fontWeight: 800, color: accent, lineHeight: 1.1, padding: 3 }}>
           {settings.nomEcole.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 6).toUpperCase()}
         </div>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>{settings.ministere}</div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: accent, marginTop: 2 }}>{settings.nomEcole}</div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase' }}>{settings.ministere}</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: accent, marginTop: 1 }}>{settings.nomEcole}</div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 1 }}>
             B.P: {settings.bp} {settings.ville}-{settings.pays} — Tél : {settings.telephone1}{settings.telephone2 ? ` / ${settings.telephone2}` : ''}
           </div>
         </div>
-        <div style={{ textAlign: 'right', fontSize: 10, fontWeight: 700 }}>
+        <div style={{ textAlign: 'right', fontSize: 9, fontWeight: 700 }}>
           <div>{settings.republique.toUpperCase()}</div>
-          <div style={{ fontWeight: 400, fontSize: 9, marginTop: 2 }}>{settings.deviseNationale}</div>
+          <div style={{ fontWeight: 400, fontSize: 8, marginTop: 1 }}>{settings.deviseNationale}</div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 800 }}>BULLETIN DE NOTES N°.... DU {trimestre}{trimestre === 1 ? 'er' : 'ème'} TRIMESTRE</div>
-        <div style={{ display: 'flex', gap: 16, fontSize: 10 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 12, border: '1px solid var(--text)', display: 'inline-block' }} /> Doublant</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 12, border: '1px solid var(--text)', display: 'inline-block' }} /> Nouveau</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 800 }}>BULLETIN DE NOTES N°.... DU {trimestre}{trimestre === 1 ? 'er' : 'ème'} TRIMESTRE</div>
+        <div style={{ display: 'flex', gap: 12, fontSize: 9 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 10, height: 10, border: '1px solid var(--text)', display: 'inline-block' }} /> Doublant</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 10, height: 10, border: '1px solid var(--text)', display: 'inline-block' }} /> Nouveau</span>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, fontSize: 11, marginBottom: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 10, marginBottom: 2 }}>
         <div>Année scolaire <b>{settings.anneeScolaire}</b></div>
         <div>Classe <b>{eleve.classe}</b></div>
         <div>Effectif <b>{classeEleves.length}</b></div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 6, borderBottom: '1px solid var(--border)', paddingBottom: 5, flexWrap: 'wrap', gap: 6 }}>
         <div>Nom et prénoms de l'élève <b>{eleve.nom} {eleve.prenom}</b></div>
         <div>N° MLE <b>—</b></div>
       </div>
 
       {/* Tableau principal */}
       <div className="table-wrap">
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 4 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 2 }}>
           <thead>
             <tr style={{ background: accent, color: 'white' }}>
-              <th style={{ padding: '5px 7px', textAlign: 'left', fontSize: 9 }}>Matières</th>
-              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Notes d'interro /20</th>
-              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Notes de devoir /20</th>
-              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Moy classe /20</th>
-              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Moy de comp /20</th>
-              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Notes moy des 2 /20</th>
-              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Coef</th>
-              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Produit</th>
-              <th style={{ padding: '5px 7px', textAlign: 'center', fontSize: 9 }}>Rang</th>
-              <th style={{ padding: '5px 7px', textAlign: 'left', fontSize: 9 }}>Nom des Prof</th>
-              <th style={{ padding: '5px 7px', textAlign: 'left', fontSize: 9 }}>Appréciation gén.</th>
-              <th style={{ padding: '5px 7px', textAlign: 'left', fontSize: 9 }}>Signature</th>
+              <th style={{ padding: '3px 5px', textAlign: 'left', fontSize: 8 }}>Matières</th>
+              <th style={{ padding: '3px 5px', textAlign: 'center', fontSize: 8 }}>Interro /20</th>
+              <th style={{ padding: '3px 5px', textAlign: 'center', fontSize: 8 }}>Devoir /20</th>
+              <th style={{ padding: '3px 5px', textAlign: 'center', fontSize: 8 }}>Moy classe /20</th>
+              <th style={{ padding: '3px 5px', textAlign: 'center', fontSize: 8 }}>Moy comp /20</th>
+              <th style={{ padding: '3px 5px', textAlign: 'center', fontSize: 8 }}>Moy des 2 /20</th>
+              <th style={{ padding: '3px 5px', textAlign: 'center', fontSize: 8 }}>Coef</th>
+              <th style={{ padding: '3px 5px', textAlign: 'center', fontSize: 8 }}>Produit</th>
+              <th style={{ padding: '3px 5px', textAlign: 'center', fontSize: 8 }}>Rang</th>
+              <th style={{ padding: '3px 5px', textAlign: 'left', fontSize: 8 }}>Prof</th>
+              <th style={{ padding: '3px 5px', textAlign: 'left', fontSize: 8 }}>Appréc.</th>
+              <th style={{ padding: '3px 5px', textAlign: 'left', fontSize: 8 }}>Signature</th>
             </tr>
           </thead>
           <tbody>
             {rowsData.map(r => renderRow(r.matiere.nom, r, r.matiere.id))}
             <tr style={{ background: accentPale, fontWeight: 700 }}>
-              <td style={{ padding: '6px 7px' }}>TOTAL</td>
+              <td style={{ padding: '4px 5px' }}>TOTAL</td>
               <td colSpan={5} />
-              <td style={{ padding: '6px 7px', textAlign: 'center' }}>{totalCoeff || '—'}</td>
-              <td style={{ padding: '6px 7px', textAlign: 'center' }}>{totalProduit ? totalProduit.toFixed(2) : '—'}</td>
+              <td style={{ padding: '4px 5px', textAlign: 'center' }}>{totalCoeff || '—'}</td>
+              <td style={{ padding: '4px 5px', textAlign: 'center' }}>{totalProduit ? totalProduit.toFixed(2) : '—'}</td>
               <td colSpan={3} />
             </tr>
           </tbody>
@@ -799,9 +799,9 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
       </div>
 
       {/* Matières facultatives */}
-      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 11, margin: '10px 0 4px' }}>MATIÈRES FACULTATIVES</div>
+      <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 10, margin: '6px 0 3px' }}>MATIÈRES FACULTATIVES</div>
       <div className="table-wrap">
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 6 }}>
           <tbody>
             {facultativeRows.map((f, i) => renderRow(f.label, f.row, 'fac-' + i))}
           </tbody>
@@ -809,82 +809,82 @@ export const BulletinPreview: React.FC<{ eleve: Eleve; classes: Classe[]; matier
       </div>
 
       {/* Majoration / Observation du titulaire */}
-      <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 8, marginBottom: 6 }}>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 4 }}>MAJORATION</div>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 32 }} />
+          <div style={{ fontSize: 9, fontWeight: 700, marginBottom: 2 }}>MAJORATION</div>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 5, minHeight: 20 }} />
         </div>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 4 }}>OBSERVATION DU TITULAIRE</div>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 32 }} />
+          <div style={{ fontSize: 9, fontWeight: 700, marginBottom: 2 }}>OBSERVATION DU TITULAIRE</div>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 5, minHeight: 20 }} />
         </div>
       </div>
 
       {/* Total des points */}
-      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 14 }}>
-        <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 8 }}>TOTAL DES POINTS</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 8, marginBottom: 6 }}>
+        <div style={{ fontWeight: 700, fontSize: 10, marginBottom: 4 }}>TOTAL DES POINTS</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {[
               ['Moyenne du trimestre', moyenneGenerale !== null ? moyenneGenerale.toFixed(2) + '/20 (' + mention + ')' : '—'],
               ['Classement du trimestre', classementGeneral],
               ['Moyenne annuelle', moyenneAnnuelle !== null ? moyenneAnnuelle.toFixed(2) + '/20' : '—'],
               ['Classement annuel', classementAnnuel],
             ].map(([label, val]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--border)', paddingBottom: 3, fontSize: 11 }}>
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--border)', paddingBottom: 2, fontSize: 10 }}>
                 <span style={{ color: 'var(--text-muted)' }}>{label}</span><span style={{ fontWeight: 700 }}>{val}</span>
               </div>
             ))}
           </div>
           <div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Moyenne annuelle en toutes lettres</div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 24, marginBottom: 8, padding: 6, fontSize: 10 }} />
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Décision et observation du conseil</div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 6, minHeight: 24, padding: 6, fontSize: 10 }} />
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2 }}>Moyenne annuelle en toutes lettres</div>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 5, minHeight: 16, marginBottom: 4, padding: 4, fontSize: 9 }} />
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2 }}>Décision et observation du conseil</div>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 5, minHeight: 16, padding: 4, fontSize: 9 }} />
           </div>
         </div>
       </div>
 
       {/* Assiduité / Décision */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 14, fontSize: 11 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 6, fontSize: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {['Travail', 'Conduite', "Nbre d'absences"].map(label => (
-            <div key={label} style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 3 }}>
+            <div key={label} style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 2 }}>
               <span style={{ color: 'var(--text-muted)' }}>{label}</span>
             </div>
           ))}
         </div>
         <div>
-          <div style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 3, marginBottom: 6 }}><span style={{ color: 'var(--text-muted)' }}>Passe en</span></div>
-          <div style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 3, marginBottom: 6 }}><span style={{ color: 'var(--text-muted)' }}>Double la</span></div>
-          <div style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 3 }}><span style={{ color: 'var(--text-muted)' }}>Exclu pour</span></div>
+          <div style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 2, marginBottom: 3 }}><span style={{ color: 'var(--text-muted)' }}>Passe en</span></div>
+          <div style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 2, marginBottom: 3 }}><span style={{ color: 'var(--text-muted)' }}>Double la</span></div>
+          <div style={{ display: 'flex', gap: 6, borderBottom: '1px dotted var(--border)', paddingBottom: 2 }}><span style={{ color: 'var(--text-muted)' }}>Exclu pour</span></div>
         </div>
       </div>
 
       {/* Résultat */}
-      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 8, textAlign: 'center' }}>RÉSULTAT</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 10 }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 8, marginBottom: 8 }}>
+        <div style={{ fontWeight: 700, fontSize: 10, marginBottom: 4, textAlign: 'center' }}>RÉSULTAT</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, fontSize: 9 }}>
           {[
             "Doit s'appliquer", 'Peut mieux faire', 'Travail satisfaisant', 'Bon travail', 'Excellent élève',
             'A fait des efforts', "Peu d'amélioration pour le travail", 'Elève faible', 'Ne fait aucun effort', 'Discipline insuffisante',
           ].map(m => (
-            <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 10, height: 10, border: '1px solid var(--text)', display: 'inline-block', flexShrink: 0 }} /> {m}
+            <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ width: 8, height: 8, border: '1px solid var(--text)', display: 'inline-block', flexShrink: 0 }} /> {m}
             </div>
           ))}
         </div>
       </div>
 
       {/* Signatures */}
-      <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-end', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: 20, justifyContent: 'flex-end', paddingTop: 6, borderTop: '1px solid var(--border)' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 36 }}>Signature du Directeur</div>
-          <div style={{ borderTop: '1px solid var(--text)', paddingTop: 4, fontSize: 10, color: 'var(--text-muted)' }}>Cachet et signature</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 18 }}>Signature du Directeur</div>
+          <div style={{ borderTop: '1px solid var(--text)', paddingTop: 3, fontSize: 9, color: 'var(--text-muted)' }}>Cachet et signature</div>
         </div>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 36 }}>Signature du Parent</div>
-          <div style={{ borderTop: '1px solid var(--text)', paddingTop: 4, fontSize: 10, color: 'var(--text-muted)' }}>Signature</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 18 }}>Signature du Parent</div>
+          <div style={{ borderTop: '1px solid var(--text)', paddingTop: 3, fontSize: 9, color: 'var(--text-muted)' }}>Signature</div>
         </div>
       </div>
     </div>
@@ -941,9 +941,8 @@ const MOTIF_LABELS: Record<Paiement['type'], string> = {
   cantine: 'Frais de cantine',
 };
 
-export const ReceiptPreview: React.FC<{ paiement: Paiement; eleve?: Eleve; payeurNom?: string }> = ({ paiement, eleve, payeurNom }) => {
+export const ReceiptPreview: React.FC<{ paiement: Paiement; eleve?: Eleve }> = ({ paiement, eleve }) => {
   const motif = MOTIF_LABELS[paiement.type] + (paiement.type === 'mensualite' && paiement.mois ? ` — ${paiement.mois}` : '');
-  const nomPayeur = payeurNom || (eleve ? `Parent / tuteur de ${eleve.prenom} ${eleve.nom}` : '');
 
   return (
     <div className="card receipt-print" style={{ padding: 32, maxWidth: 420, margin: '0 auto', border: '1px solid var(--text)', borderRadius: 4 }}>
@@ -959,7 +958,7 @@ export const ReceiptPreview: React.FC<{ paiement: Paiement; eleve?: Eleve; payeu
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, fontSize: 13 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
           <span>de M</span>
-          <span style={{ flex: 1, fontWeight: 700, borderBottom: '1px dotted var(--text)', paddingBottom: 2 }}>{nomPayeur}</span>
+          <span style={{ flex: 1, fontWeight: 700, borderBottom: '1px dotted var(--text)', paddingBottom: 2, minHeight: 16 }} />
         </div>
         <div>
           <div style={{ borderBottom: '1px dotted var(--text)', minHeight: 18, fontWeight: 700 }}>{montantEnLettres(paiement.montant, 'BPF')}</div>

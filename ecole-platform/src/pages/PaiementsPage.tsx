@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Download, CreditCard, AlertCircle, CheckCircle, ChevronRight } from 'lucide-react';
-import { Paiement, Eleve, Classe, User } from '../types';
+import { Paiement, Eleve, Classe } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useConnectivity } from '../context/ConnectivityContext';
-import { fetchPaiements, fetchEleves, fetchClasses, createPaiement, updatePaiementStatus, fetchUsersByRole } from '../api/resources';
+import { fetchPaiements, fetchEleves, fetchClasses, createPaiement, updatePaiementStatus } from '../api/resources';
 import { errorMessage } from '../api/client';
 import { ReceiptPreview } from './OtherPages';
 
@@ -13,20 +13,14 @@ interface PaiementsData {
   eleves: Eleve[];
   classes: Classe[];
   paiements: Paiement[];
-  parents: User[];
   onPaiementCreated: (p: Paiement) => void;
   onPaiementUpdated: (p: { id: string; status: string; pending?: boolean }) => void;
 }
 
-const payeurNomFor = (eleve: Eleve | undefined, parents: User[]) => {
-  const parent = eleve ? parents.find(p => p.id === eleve.parentId) : undefined;
-  return parent ? `${parent.prenom} ${parent.nom}` : undefined;
-};
-
 // ============================================================
 // VUE PARENT — uniquement son/ses enfant(s)
 // ============================================================
-const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements, parents }) => {
+const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements }) => {
   const { user } = useAuth();
   const [detailEleve, setDetailEleve] = useState<string | null>(null);
   const [receiptPaiement, setReceiptPaiement] = useState<string | null>(null);
@@ -142,7 +136,7 @@ const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements, parents }
                 </div>
               </div>
               <div className="modal-body" style={{ background: 'var(--surface2)' }}>
-                <ReceiptPreview paiement={p} eleve={e} payeurNom={payeurNomFor(e, parents)} />
+                <ReceiptPreview paiement={p} eleve={e} />
               </div>
             </div>
           </div>
@@ -155,7 +149,7 @@ const PaiementsParent: React.FC<PaiementsData> = ({ eleves, paiements, parents }
 // ============================================================
 // VUE ADMIN — toutes les classes
 // ============================================================
-const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, parents, onPaiementCreated, onPaiementUpdated }) => {
+const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, onPaiementCreated, onPaiementUpdated }) => {
   const [selectedClasse, setSelectedClasse] = useState(ALL);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
@@ -462,7 +456,7 @@ const PaiementsAdmin: React.FC<PaiementsData> = ({ eleves, classes, paiements, p
                 </div>
               </div>
               <div className="modal-body" style={{ background: 'var(--surface2)' }}>
-                <ReceiptPreview paiement={p} eleve={e} payeurNom={payeurNomFor(e, parents)} />
+                <ReceiptPreview paiement={p} eleve={e} />
               </div>
             </div>
           </div>
@@ -536,7 +530,6 @@ const PaiementsPage: React.FC = () => {
   const [eleves, setEleves] = useState<Eleve[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
   const [paiements, setPaiements] = useState<Paiement[]>([]);
-  const [parents, setParents] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -544,8 +537,8 @@ const PaiementsPage: React.FC = () => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([fetchEleves(), fetchClasses(), fetchPaiements(), fetchUsersByRole('parent')])
-      .then(([e, c, p, par]) => { if (!cancelled) { setEleves(e); setClasses(c); setPaiements(p); setParents(par); } })
+    Promise.all([fetchEleves(), fetchClasses(), fetchPaiements()])
+      .then(([e, c, p]) => { if (!cancelled) { setEleves(e); setClasses(c); setPaiements(p); } })
       .catch(err => { if (!cancelled) setError(errorMessage(err)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -562,7 +555,7 @@ const PaiementsPage: React.FC = () => {
   if (error) return <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--danger)' }}>{error}</div>;
 
   const data: PaiementsData = {
-    eleves, classes, paiements, parents,
+    eleves, classes, paiements,
     onPaiementCreated: (p) => setPaiements(prev => [...prev, p]),
     onPaiementUpdated: (p) => setPaiements(prev => prev.map(x => x.id === p.id ? { ...x, status: p.status as Paiement['status'], pending: p.pending } : x)),
   };

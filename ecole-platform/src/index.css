@@ -524,7 +524,8 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* Impression du bulletin et du reçu (bouton "Télécharger PDF" -> window.print()) */
 @page {
-  margin: 12mm;
+  size: A4 portrait;
+  margin: 8mm;
 }
 
 @media print {
@@ -538,6 +539,10 @@ tbody tr:last-child td { border-bottom: none; }
     box-shadow: none;
     border: none;
   }
+  /* Le bulletin doit tenir sur une seule page : on évite toute coupure
+     interne (tableau, sections) qui forcerait un débordement sur une 2e page. */
+  .bulletin-print { page-break-inside: avoid; break-inside: avoid; }
+  .bulletin-print table, .bulletin-print tr { page-break-inside: avoid; break-inside: avoid; }
   .no-print, .sidebar, .topbar, .sidebar-overlay { display: none !important; }
   .modal-overlay { position: static !important; background: none !important; padding: 0 !important; }
   .modal { box-shadow: none !important; max-width: 100% !important; }
