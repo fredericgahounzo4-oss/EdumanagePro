@@ -956,7 +956,9 @@ export const ReceiptPreview: React.FC<{ paiement: Paiement; eleve?: Eleve }> = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, fontSize: 13 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
           <span>de M</span>
-          <span style={{ flex: 1, fontWeight: 700, borderBottom: '1px dotted var(--text)', paddingBottom: 2, minHeight: 16 }} />
+          <span style={{ flex: 1, fontWeight: 700, borderBottom: '1px dotted var(--text)', paddingBottom: 2, minHeight: 16 }}>
+            {eleve ? `${eleve.prenom} ${eleve.nom}` : ''}
+          </span>
         </div>
         <div>
           <div style={{ borderBottom: '1px dotted var(--text)', minHeight: 18, fontWeight: 700 }}>{montantEnLettres(paiement.montant, 'BPF')}</div>
@@ -965,7 +967,7 @@ export const ReceiptPreview: React.FC<{ paiement: Paiement; eleve?: Eleve }> = (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
           <span>pour</span>
           <span style={{ flex: 1, fontWeight: 700, borderBottom: '1px dotted var(--text)', paddingBottom: 2 }}>
-            {motif}{eleve ? ` — ${eleve.prenom} ${eleve.nom} (${eleve.classe})` : ''}
+            {motif}{eleve ? ` (${eleve.classe})` : ''}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 6 }}>
