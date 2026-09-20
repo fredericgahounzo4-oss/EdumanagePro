@@ -265,6 +265,7 @@ const EmploiDuTempsPage: React.FC = () => {
                           <div style={{ fontWeight: 700, fontSize: 12, color: matiere.couleur, marginBottom: 2 }}>{matiere.nom}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{cours.salle}</div>
                           <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 4 }}>Coeff. {matiere.coefficient}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 2 }}>{slot.debut} - {slot.fin}</div>
                         </div>
                       ) : (
                         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 64, borderRadius: 8, border: canEdit ? '1.5px dashed var(--border)' : 'none' }}
