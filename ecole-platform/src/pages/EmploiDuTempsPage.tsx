@@ -77,20 +77,22 @@ const EmploiDuTempsPage: React.FC = () => {
   }, [classesVisibles.length]);
 
   // Les lignes de la grille sont dynamiques : les 4 créneaux par défaut + tout
-  // créneau horaire personnalisé déjà créé (ex: 07:00-07:55), toutes classes confondues.
-  // Regroupées par (début, fin) et non par le seul début : deux créneaux qui
-  // commencent à la même heure mais durent différemment (ex. 07:00-07:55 et
-  // 07:00-08:45) doivent rester deux lignes distinctes, sinon l'une écrase
-  // l'heure de fin affichée — et donc modifiée à l'enregistrement — de l'autre.
+  // créneau horaire personnalisé déjà créé (ex: 07:00-07:55), toutes classes
+  // confondues. Une seule ligne par heure de début, même si des cours qui y
+  // démarrent ont des durées différentes selon le jour : chaque cellule
+  // affiche et utilise l'horaire propre du cours qu'elle contient (voir
+  // getCoursForSlot / openSlot ci-dessous), jamais un horaire "de ligne"
+  // partagé — c'est ce qui évitait une ligne par durée sans recréer le bug
+  // où l'un écrasait l'heure de fin affichée de l'autre.
   const creneauxRows = useMemo(() => {
-    const byKey = new Map<string, { debut: string; fin: string }>();
-    DEFAULT_SLOTS.forEach(s => byKey.set(`${s.debut}|${s.fin}`, s));
-    emploiDuTemps.forEach(c => byKey.set(`${c.heureDebut}|${c.heureFin}`, { debut: c.heureDebut, fin: c.heureFin }));
-    return Array.from(byKey.values()).sort((a, b) => toMinutes(a.debut) - toMinutes(b.debut) || toMinutes(a.fin) - toMinutes(b.fin));
+    const byDebut = new Map<string, { debut: string; fin: string }>();
+    DEFAULT_SLOTS.forEach(s => byDebut.set(s.debut, s));
+    emploiDuTemps.forEach(c => byDebut.set(c.heureDebut, { debut: c.heureDebut, fin: c.heureFin }));
+    return Array.from(byDebut.values()).sort((a, b) => toMinutes(a.debut) - toMinutes(b.debut));
   }, [emploiDuTemps]);
 
-  const getCoursForSlot = (jour: string, debut: string, fin: string) =>
-    emploiDuTemps.find(e => e.jour === jour && e.heureDebut === debut && e.heureFin === fin && e.classeId === selectedClasse);
+  const getCoursForSlot = (jour: string, debut: string) =>
+    emploiDuTemps.find(e => e.jour === jour && e.heureDebut === debut && e.classeId === selectedClasse);
 
   const getMatiereById = (id: string) => matieres.find(m => m.id === id);
   const matieresDeLaClasse = matieres.filter(m => m.classeId === selectedClasse);
@@ -108,10 +110,15 @@ const EmploiDuTempsPage: React.FC = () => {
     setMatiereError(null);
   };
 
+  // fin: l'heure de fin propre au cours déjà présent dans la cellule, si elle
+  // existe — sinon l'heure de fin par défaut de la ligne, pour la création
+  // d'un nouveau cours. Ne jamais utiliser l'heure "de ligne" pour modifier
+  // un cours existant, au risque de raccourcir/allonger un cours sans le vouloir.
   const openSlot = (jour: string, debut: string, fin: string) => {
     if (!canEdit) return;
-    const existing = getCoursForSlot(jour, debut, fin);
-    setForm({ jour, heureDebut: debut, heureFin: fin, matiereId: existing?.matiereId || '', salle: existing?.salle || '' });
+    const existing = getCoursForSlot(jour, debut);
+    const finReelle = existing?.heureFin || fin;
+    setForm({ jour, heureDebut: debut, heureFin: finReelle, matiereId: existing?.matiereId || '', salle: existing?.salle || '' });
     setSaveError(null);
     resetMatiereForm();
     setEditSlot({ existing });
@@ -251,13 +258,13 @@ const EmploiDuTempsPage: React.FC = () => {
 
             {/* Time rows */}
             {creneauxRows.map((slot, ci) => (
-              <div key={`${slot.debut}|${slot.fin}`} style={{ display: 'grid', gridTemplateColumns: '90px repeat(5, 1fr)', borderBottom: ci < creneauxRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div key={slot.debut} style={{ display: 'grid', gridTemplateColumns: '90px repeat(5, 1fr)', borderBottom: ci < creneauxRows.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <div style={{ padding: '16px 10px', background: 'var(--surface2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{slot.debut}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{slot.fin}</div>
                 </div>
                 {JOURS.map(jour => {
-                  const cours = getCoursForSlot(jour, slot.debut, slot.fin);
+                  const cours = getCoursForSlot(jour, slot.debut);
                   const matiere = cours ? getMatiereById(cours.matiereId) : null;
 
                   return (
@@ -269,7 +276,7 @@ const EmploiDuTempsPage: React.FC = () => {
                           <div style={{ fontWeight: 700, fontSize: 12, color: matiere.couleur, marginBottom: 2 }}>{matiere.nom}</div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{cours.salle}</div>
                           <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 4 }}>Coeff. {matiere.coefficient}</div>
-                          <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 2 }}>{slot.debut} - {slot.fin}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 2 }}>{cours.heureDebut} - {cours.heureFin}</div>
                         </div>
                       ) : (
                         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 64, borderRadius: 8, border: canEdit ? '1.5px dashed var(--border)' : 'none' }}
