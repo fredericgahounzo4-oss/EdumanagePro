@@ -940,10 +940,17 @@ const MOTIF_LABELS: Record<Paiement['type'], string> = {
 };
 
 export const ReceiptPreview: React.FC<{ paiement: Paiement; eleve?: Eleve }> = ({ paiement, eleve }) => {
+  const { settings } = useSettings();
   const motif = MOTIF_LABELS[paiement.type] + (paiement.type === 'mensualite' && paiement.mois ? ` — ${paiement.mois}` : '');
+  const accent = settings.couleurBulletin || '#2563a8';
 
   return (
-    <div className="card receipt-print" style={{ padding: 32, maxWidth: 420, margin: '0 auto', border: '1px solid var(--text)', borderRadius: 4 }}>
+    <div className="card receipt-print" style={{ padding: 32, maxWidth: 420, margin: '0 auto', border: '1px solid var(--text)', borderRadius: 4, background: settings.couleurFondBulletin }}>
+      <div style={{ textAlign: 'center', marginBottom: 18 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: accent }}>{settings.nomEcole}</div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{settings.ville}, {settings.pays}</div>
+      </div>
+
       <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: 1, marginBottom: 22 }}>
         BPF <span style={{ borderBottom: '1px solid var(--text)', paddingBottom: 2, marginLeft: 6 }}>{paiement.montant.toLocaleString('fr-FR')}</span>
       </div>
