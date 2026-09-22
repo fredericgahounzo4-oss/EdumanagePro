@@ -2,7 +2,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.exceptions import ValidationError, PermissionDenied, MethodNotAllowed
 from rest_framework.response import Response
 
 from .models import Classe, Matiere, Eleve, Note, Paiement, CreneauEDT, Presence, Notification, Conversation, Message
@@ -186,11 +186,22 @@ class ConversationViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ConversationSerializer
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['get', 'post', 'head', 'options']
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
         return ctx
+
+    def update(self, request, *args, **kwargs):
+        # PATCH/DELETE sont autorisés sur ce ViewSet uniquement pour modifier/supprimer
+        # UN message précis, via l'action message_detail ci-dessous — jamais la
+        # conversation entière (pas de renommage/suppression global du fil).
+        raise MethodNotAllowed(request.method)
+
+    partial_update = update
+
+    def destroy(self, request, *args, **kwargs):
+        raise MethodNotAllowed(request.method)
 
     def get_queryset(self):
         user = self.request.user
@@ -259,3 +270,27 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conv = self.get_object()
         conv.messages.exclude(auteur=request.user).update(lu=True)
         return Response({'ok': True})
+
+    @action(detail=True, methods=['patch', 'delete'], url_path=r'messages/(?P<message_id>[^/.]+)')
+    def message_detail(self, request, pk=None, message_id=None):
+        """
+        Modifier ou supprimer UN message précis d'une conversation.
+        Réservé à l'auteur du message lui-même — peu importe son rôle
+        (parent, professeur ou admin) : personne ne peut modifier ou
+        supprimer un message écrit par quelqu'un d'autre.
+        """
+        conv = self.get_object()  # get_queryset restreint déjà aux participants de la conversation
+        msg = get_object_or_404(Message, id=message_id, conversation=conv)
+        if msg.auteur_id != request.user.id:
+            raise PermissionDenied("Vous ne pouvez modifier ou supprimer que vos propres messages.")
+
+        if request.method == 'DELETE':
+            msg.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        contenu = (request.data.get('contenu') or '').strip()
+        if not contenu:
+            raise ValidationError({'contenu': 'Ce champ est requis.'})
+        msg.contenu = contenu
+        msg.save(update_fields=['contenu'])
+        return Response(MessageSerializer(msg).data)

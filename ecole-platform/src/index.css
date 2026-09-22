@@ -549,3 +549,13 @@ tbody tr:last-child td { border-bottom: none; }
   .bulletin-page-break { page-break-after: always; break-after: page; }
   .bulletin-page-break:last-child { page-break-after: auto; break-after: auto; }
 }
+
+/* Actions (modifier/supprimer) sur ses propres messages dans la messagerie :
+   discrètes, visibles seulement au survol du message. */
+.message-bubble-actions {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.message-bubble-row:hover .message-bubble-actions {
+  opacity: 1;
+}

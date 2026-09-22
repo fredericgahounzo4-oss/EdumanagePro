@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Send, Plus, X, MessageCircle } from 'lucide-react';
+import { Send, Plus, X, MessageCircle, Pencil, Trash2, Check } from 'lucide-react';
 import { Conversation, Message, Eleve, Classe, Matiere } from '../types';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchConversations, fetchMessages, sendReply, marquerConversationLue,
   createConversationForEleve, createConversationForClasse, fetchEleves, fetchClasses, fetchMatieres,
+  modifierMessage, supprimerMessage,
 } from '../api/resources';
 import { errorMessage } from '../api/client';
 import { classesDuProfesseur, elevesDuProfesseur } from '../utils/permissions';
@@ -34,6 +35,9 @@ const MessagesPage: React.FC = () => {
   const [loadingThread, setLoadingThread] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const [showCompose, setShowCompose] = useState(false);
   const [composeTarget, setComposeTarget] = useState<'eleve' | 'classe'>('eleve');
@@ -104,6 +108,50 @@ const MessagesPage: React.FC = () => {
       alert(errorMessage(err));
     } finally {
       setSending(false);
+    }
+  };
+
+  const startEdit = (m: Message) => {
+    setEditingId(m.id);
+    setEditText(m.contenu);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditText('');
+  };
+
+  const saveEdit = async () => {
+    if (!selectedId || !editingId || !editText.trim()) return;
+    setSavingEdit(true);
+    try {
+      const updated = await modifierMessage(selectedId, editingId, editText.trim());
+      setMessages(prev => prev.map(m => m.id === editingId ? updated : m));
+      setConversations(prev => prev.map(c => c.id === selectedId && c.dernierMessage?.id === editingId
+        ? { ...c, dernierMessage: updated }
+        : c));
+      setEditingId(null);
+      setEditText('');
+    } catch (err) {
+      alert(errorMessage(err));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!selectedId) return;
+    if (!window.confirm('Supprimer ce message ?')) return;
+    try {
+      await supprimerMessage(selectedId, messageId);
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      setConversations(prev => prev.map(c => {
+        if (c.id !== selectedId || c.dernierMessage?.id !== messageId) return c;
+        const rest = messages.filter(m => m.id !== messageId);
+        return { ...c, dernierMessage: rest[rest.length - 1] };
+      }));
+    } catch (err) {
+      alert(errorMessage(err));
     }
   };
 
@@ -215,15 +263,44 @@ const MessagesPage: React.FC = () => {
                   <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Chargement...</div>
                 ) : messages.map(m => {
                   const mine = m.auteurId === user?.id;
+                  const isEditing = editingId === m.id;
                   return (
-                    <div key={m.id} style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
+                    <div key={m.id} className="message-bubble-row" style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
                       {!mine && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2, marginLeft: 4 }}>{m.auteurNom}</div>}
-                      <div style={{
-                        background: mine ? 'var(--primary)' : 'var(--surface2)', color: mine ? 'white' : 'var(--text)',
-                        borderRadius: 12, padding: '10px 14px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap',
-                      }}>
-                        {m.contenu}
-                      </div>
+                      {isEditing ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <textarea
+                            className="form-control" rows={2} value={editText} autoFocus
+                            onChange={e => setEditText(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(); } if (e.key === 'Escape') cancelEdit(); }}
+                          />
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <button className="btn btn-ghost btn-sm" onClick={cancelEdit}>Annuler</button>
+                            <button className="btn btn-primary btn-sm" onClick={saveEdit} disabled={!editText.trim() || savingEdit}>
+                              <Check size={13} /> Enregistrer
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ position: 'relative' }}>
+                          <div style={{
+                            background: mine ? 'var(--primary)' : 'var(--surface2)', color: mine ? 'white' : 'var(--text)',
+                            borderRadius: 12, padding: '10px 14px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap',
+                          }}>
+                            {m.contenu}
+                          </div>
+                          {mine && (
+                            <div className="message-bubble-actions" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
+                              <button className="btn btn-ghost btn-icon btn-sm" title="Modifier" onClick={() => startEdit(m)} style={{ width: 22, height: 22 }}>
+                                <Pencil size={11} />
+                              </button>
+                              <button className="btn btn-ghost btn-icon btn-sm" title="Supprimer" onClick={() => handleDeleteMessage(m.id)} style={{ width: 22, height: 22, color: 'var(--danger)' }}>
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 2, textAlign: mine ? 'right' : 'left' }}>{formatDate(m.date)}</div>
                     </div>
                   );

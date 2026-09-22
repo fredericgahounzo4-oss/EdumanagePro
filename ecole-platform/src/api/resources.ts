@@ -178,3 +178,10 @@ export const sendReply = async (conversationId: string, contenu: string): Promis
 export const marquerConversationLue = async (conversationId: string): Promise<void> => {
   await http.post(`/conversations/${conversationId}/marquer_lu/`, {});
 };
+
+export const modifierMessage = async (conversationId: string, messageId: string, contenu: string): Promise<Message> =>
+  mapMessage(await http.patch<any>(`/conversations/${conversationId}/messages/${messageId}/`, { contenu }));
+
+export const supprimerMessage = async (conversationId: string, messageId: string): Promise<void> => {
+  await http.delete(`/conversations/${conversationId}/messages/${messageId}/`);
+};
