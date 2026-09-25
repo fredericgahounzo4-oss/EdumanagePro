@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#1F3B33" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Applique le thème enregistré avant le premier rendu pour éviter un flash clair en mode sombre
+      (function () {
+        try {
+          var p = JSON.parse(localStorage.getItem("smp_prefs") || "{}");
+          var dark = p.theme === "dark" || ((!p.theme || p.theme === "auto") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+          if (p.langue === "en") document.documentElement.lang = "en";
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SchoolManager" />
+    <title>SchoolManager Pro</title>
+    <meta name="description" content="Plateforme de gestion scolaire : élèves, notes, présences, écolage et bulletins." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
